@@ -1150,7 +1150,7 @@ export default function RepoVisualizer() {
           position:'relative', background: T.bg,
         }}>
           {/* Overlay do Grafo de Termos */}
-          {view==='grafo termo' && termQuery && termGraph && (
+          {view==='view_term' && termQuery && termGraph && (
             <div style={{
               position:'absolute', top:16, left:16,
               background:'#03060dee',
@@ -1164,7 +1164,7 @@ export default function RepoVisualizer() {
               </div>
               <div style={{color:'#f43f5e', fontSize:14, fontWeight:800}}>{termQuery}</div>
               <div style={{marginTop:6, color:T.textMid, fontSize:10}}>
-                Em <span style={{color:T.textHi, fontWeight:700}}>{termGraph.matchCount}</span> arquivo(s)
+                {t('term_in')} <span style={{color:T.textHi, fontWeight:700}}>{termGraph.matchCount}</span> {t('term_files')}
               </div>
             </div>
           )}
@@ -1188,8 +1188,8 @@ export default function RepoVisualizer() {
               <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:12,padding:20}}>
                 <div style={{color:'#f43f5e', fontSize:12, textAlign:'center', lineHeight:2.5}}>
                   <div style={{fontSize:36, marginBottom:12, opacity:0.2}}>✦</div>
-                  Nenhum arquivo contém <strong style={{color:'#fff'}}>{termQuery}</strong>.<br/>
-                  <span style={{color:T.textMid}}>Tente outro termo.</span>
+                  {t('empty_term_1')} <strong style={{color:'#fff'}}>{termQuery}</strong>.<br/>
+                  <span style={{color:T.textMid}}>{t('empty_term_2')}</span>
                 </div>
               </div>
             )
