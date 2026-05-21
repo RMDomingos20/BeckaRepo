@@ -597,71 +597,100 @@ export default function RepoVisualizer() {
     setStats(s => ({...s, code:nodes.length, edges:edges.length, connected:conn.size}));
   }, []);
 
+  // --- INÍCIO DA NOVA FUNÇÃO PROCESS FILES ---
   const processFiles = useCallback(async (rawFiles) => {
-    setPhase('loading'); setLoadPct(10);
-    const fd = []; const MAX = 500*1024;
-    setLoadMsg(`Filtrando ${rawFiles.length} arquivos mapeados...`);
-    for (const f of rawFiles) {
-      const path = (f.webkitRelativePath||f._path||f.name).replace(/\\/g,'/');
-      const pathParts = path.split('/');
-      if (pathParts.some(p => SKIP_DIRS_EXACT.has(p.toLowerCase()))) continue;
-      const ext = f.name.split('.').pop()?.toLowerCase() || '';
-      const isCode = CODE_EXTS.has(ext) || ['dockerfile','makefile'].includes(f.name.toLowerCase());
-      const isAsset = ASSET_EXTS.has(ext);
-      if (!isCode && !isAsset) continue;
-      if (IGNORE_FILES_EXACT.has(f.name.toLowerCase())) continue;
-      let content = null;
-      if (isCode && f.size < MAX) { try { content = await f.text(); } catch {} }
-      fd.push({ path, name:f.name, content, size:f.size, fileRef: f });
-    }
-    if (!fd.length) { setPhase('drop'); return; }
-    setRepoName(fd[0].path.split('/')[0] || 'Repositório');
-    setLoadMsg(`Lendo e mapeando ${fd.length} arquivos úteis...`);
-    setLoadPct(50);
-    await new Promise(r => setTimeout(r, 20));
-    buildGraph(fd);
-    setLoadPct(100);
-    await new Promise(r => setTimeout(r, 60));
-    setPhase('main');
-  }, [buildGraph]);
+    try {
+      setPhase('loading');
+      setLoadPct(5);
 
-  const onDrop = useCallback(async (e) => {
-    e.preventDefault(); setDragging(false);
-    const items = e.dataTransfer.items;
-    if (!items) return;
-    setPhase('loading');
-    setLoadMsg('Caminhando pelo disco...');
-    setLoadPct(5);
-    const all = []; const encounteredSkipped = new Set(); let readCount = 0;
-    async function readEntry(entry, base='') {
-      if (entry.isDirectory) {
-        if (SKIP_DIRS_EXACT.has(entry.name.toLowerCase())) { encounteredSkipped.add(entry.name); return; }
-        if (entry.name.startsWith('.') && entry.name !== '.git') return;
-        const reader = entry.createReader();
-        let batch;
-        do {
-          batch = await new Promise(r => reader.readEntries(r));
-          for (const ch of batch) await readEntry(ch, base+entry.name+'/');
-        } while (batch.length > 0);
-      } else {
-        if (IGNORE_FILES_EXACT.has(entry.name.toLowerCase())) return;
-        const f = await new Promise(r => entry.file(r));
-        try { Object.defineProperty(f,'_path',{value:base+entry.name,configurable:true}); } catch {}
-        all.push(f); readCount++;
-        if (readCount % 5000 === 0) setLoadMsg(`Lidos ${readCount} arquivos no disco...`);
+      const MAX = 500 * 1024; // 500KB
+      const BATCH_SIZE = 80;  // Arquivos lidos em paralelo por lote
+
+      setLoadMsg(`Filtrando ${rawFiles.length} arquivos...`);
+
+      const candidates = [];
+      for (const f of rawFiles) {
+        const path = (f.webkitRelativePath || f._path || f.name).replace(/\\/g, '/');
+        const pathParts = path.split('/');
+
+        if (pathParts.some(p => SKIP_DIRS_EXACT.has(p.toLowerCase()))) continue;
+
+        const ext = f.name.split('.').pop()?.toLowerCase() || '';
+        const isCode = CODE_EXTS.has(ext) || ['dockerfile', 'makefile'].includes(f.name.toLowerCase());
+        const isAsset = ASSET_EXTS.has(ext);
+
+        if (!isCode && !isAsset) continue;
+        if (IGNORE_FILES_EXACT.has(f.name.toLowerCase())) continue;
+
+        candidates.push({ f, path, isCode });
       }
+
+      if (!candidates.length) {
+        alert('Nenhum arquivo de código ou asset compatível foi encontrado nesta pasta.');
+        setPhase('drop');
+        return;
+      }
+
+      setRepoName(candidates[0].path.split('/')[0] || 'Repositório');
+      setLoadPct(15);
+
+      const fd = [];
+      const totalBatches = Math.ceil(candidates.length / BATCH_SIZE);
+
+      for (let b = 0; b < totalBatches; b++) {
+        const batch = candidates.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
+
+        const batchPct = 15 + Math.round((b / totalBatches) * 35);
+        setLoadMsg(`Lendo arquivos ${Math.min((b + 1) * BATCH_SIZE, candidates.length)}/${candidates.length}...`);
+        setLoadPct(batchPct);
+
+        await new Promise(r => setTimeout(r, 0));
+
+        const results = await Promise.all(
+          batch.map(async ({ f, path, isCode }) => {
+            let content = null;
+            if (isCode && f.size < MAX) {
+              try { content = await f.text(); }
+              catch (readErr) { console.warn(`Não foi possível ler: ${path}`, readErr); }
+            }
+            return { path, name: f.name, content, size: f.size, fileRef: f };
+          })
+        );
+
+        fd.push(...results);
+      }
+
+      setLoadMsg(`Mapeando conexões de ${fd.length} arquivos...`);
+      setLoadPct(55);
+      await new Promise(r => setTimeout(r, 20));
+
+      buildGraph(fd);
+
+      setLoadPct(100);
+      await new Promise(r => setTimeout(r, 60));
+      setPhase('main');
+
+    } catch (error) {
+      console.error('[BeckaRepo] Erro crítico no processamento:', error);
+      alert('Houve um erro ao processar o repositório. Verifique o console para mais detalhes.');
+      setPhase('drop');
     }
-    for (let i=0;i<items.length;i++) {
-      const entry = items[i].webkitGetAsEntry?.();
-      if (entry) await readEntry(entry);
-    }
-    setStats(s => ({...s, files:all.length, skippedDirs: Array.from(encounteredSkipped).sort()}));
-    await processFiles(all);
-  }, [processFiles]);
+  }, [buildGraph]);
+  // --- FIM DA NOVA FUNÇÃO PROCESS FILES ---
 
   const onInput = useCallback(async e => await processFiles(Array.from(e.target.files)), [processFiles]);
   
+  const onDrop = useCallback(async (e) => {
+    e.preventDefault();
+    setDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      await processFiles(files);
+    }
+  }, [processFiles]);
+  
   const reset = () => { 
+    setPhase('drop'); setGraph(null); setSelectedFile(null);
     setPhase('drop'); setGraph(null); setSelectedFile(null); 
     setSearch(''); setTermInput(''); setTermQuery(''); 
     setStats({files:0,code:0,edges:0,connected:0,skipped:0,skippedDirs:[]}); 

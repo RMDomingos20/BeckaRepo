@@ -28,14 +28,17 @@ nativeTheme.themeSource = 'dark'; // Força o tema escuro para manter a estétic
       height: 35
     },
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
   if (isDev) {
     // Em desenvolvimento, o Electron abre o localhost do Vite
     mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
   } else {
     // Em produção (no .exe), ele lê o HTML gerado na pasta dist
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
