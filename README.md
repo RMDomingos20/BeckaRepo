@@ -1,6 +1,7 @@
 <div align="center">
 
-<img width="1536" height="1024" alt="Logo" src="https://github.com/user-attachments/assets/7a3c25ad-0479-436a-be93-ff7980eee14c" />
+<img width="940" height="322" alt="BeckaRepo" src="https://github.com/user-attachments/assets/f8121a84-f34d-4cb8-9a1d-62af6a851dd7" />
+
 
 ### Repository Architecture Visualization & Dependency Mapping Engine
 
