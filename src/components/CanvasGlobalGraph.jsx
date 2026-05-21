@@ -48,41 +48,34 @@ function hullPath(polygon) {
 function drawClusterHulls(ctx, clusters, nodeById) {
   if (!clusters || clusters.size === 0) return;
 
+  // curveBasisClosed é 100% seguro contra explosões matemáticas (não gera tangentes malucas)
+  const lineGen = d3.line()
+    .x(d => d[0])
+    .y(d => d[1])
+    .curve(d3.curveBasisClosed)
+    .context(ctx);
+
   for (const [, info] of clusters) {
     const pts = info.nodes
       .map(n => nodeById.get(n.id))
       .filter(n => n && n.x != null && n.y != null && !isNaN(n.x) && !isNaN(n.y))
       .map(n => [n.x, n.y]);
 
-    if (pts.length < 2) continue;
+    if (pts.length < 3) continue;
     const expanded = expandedHull(pts);
     if (!expanded || expanded.length < 3) continue;
 
-    // Curva catmull-rom manual no canvas
     ctx.beginPath();
-    const n = expanded.length;
-    for (let i = 0; i < n; i++) {
-      const p0 = expanded[(i - 1 + n) % n];
-      const p1 = expanded[i];
-      const p2 = expanded[(i + 1) % n];
-      const p3 = expanded[(i + 2) % n];
-
-      if (i === 0) ctx.moveTo(p1[0], p1[1]);
-
-      // Catmull-rom → bezier
-      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
-      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
-      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
-      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
-      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1]);
-    }
+    lineGen(expanded);
     ctx.closePath();
 
     const hex = info.color;
-    ctx.fillStyle = hex + '14';   // 8% opacidade — sutil
+    ctx.fillStyle = hex + '14';   // 8% opacidade
     ctx.fill();
+    
+    ctx.lineJoin = 'round';
     ctx.strokeStyle = hex + '55'; // 33% opacidade
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
@@ -92,7 +85,7 @@ function drawClusterHulls(ctx, clusters, nodeById) {
 // ==========================================
 // 1. MOTOR SVG (< 800 NÓS)
 // ==========================================
-function SvgEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeClusterMap, showClusters }) {
+function SvgEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeClusterMap, showClusters, onContextMenu }) {
   const svgRef = useRef(null);
   const onSelectRef = useRef(onSelect);
   const simRef = useRef(null);
@@ -154,6 +147,16 @@ function SvgEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeC
     const initScale = isTiny ? 0.8 : Math.max(0.3, 0.95 - (connectedCount / 1500));
     sv.call(zoom).on('dblclick.zoom', null);
     sv.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(initScale).translate(-W / 2, -H / 2));
+
+    sv.on('contextmenu', (ev) => {
+      if (onContextMenu) {
+        ev.preventDefault();
+        // Se não clicou em um nó (circle), é o fundo
+        if (ev.target.tagName !== 'circle') {
+          onContextMenu({ x: ev.clientX, y: ev.clientY, node: null });
+        }
+      }
+    });
 
     const dynamicDistance = isTiny ? 85 : Math.max(20, Math.min(60, 15 + connectedCount * 0.05));
     const dynamicCharge = isTiny ? -200 : -Math.max(25, Math.min(100, 20 + connectedCount * 0.1));
@@ -243,6 +246,13 @@ function SvgEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeC
     const node = nodeg.selectAll('g.node-group').data(connectedNodes).join('g')
       .attr('class', 'node-group').style('cursor', 'pointer')
       .on('click', (ev, d) => { ev.stopPropagation(); onSelectRef.current(d); })
+      .on('contextmenu', (ev, d) => {
+        if (onContextMenu) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          onContextMenu({ x: ev.clientX, y: ev.clientY, node: d });
+        }
+      })
       .call(d3.drag()
         .on('start', (ev, d) => { if (!ev.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
         .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
@@ -371,7 +381,7 @@ function SvgEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeC
 // ==========================================
 // 2. MOTOR CANVAS (> 800 NÓS - Máxima Performance)
 // ==========================================
-function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeClusterMap, showClusters }) {
+function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeClusterMap, showClusters, onContextMenu }) {
   const containerRef = useRef(null);
   const canvasRef    = useRef(null);
   const transformRef = useRef(d3.zoomIdentity);
@@ -470,15 +480,48 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, no
       sim.force('charge', d3.forceManyBody().strength(dynamicCharge).distanceMax(300 + connectedCount * 0.1));
       sim.force('collide', d3.forceCollide(d => nodeRadius(d, null, false) + 1.5).iterations(2));
     }
-    sim.force('center', d3.forceCenter(W / 2, H / 2).strength(isUltra ? 0.02 : 0.1));
+    sim.force('center', d3.forceCenter(W / 2, H / 2).strength(isUltra ? 0.005 : 0.1));
     sim.alphaDecay(isUltra ? 0.1 : 0.04);
     simRef.current = sim;
+
+    const clustersRefForSim = { current: clusters };
+    const nodeClusterMapRef = { current: nodeClusterMap };
+
+    sim.force('cluster', function(alpha) {
+      const cls = clustersRefForSim.current;
+      const ncm = nodeClusterMapRef.current;
+      if (!showClustersRef.current || !cls || cls.size === 0) return;
+
+      // Calcula o centro de massa de cada cluster
+      const centroids = new Map();
+      for (const [id, info] of cls) {
+        let cx = 0, cy = 0, count = 0;
+        info.nodes.forEach(n => {
+          const node = nodeById.get(n.id);
+          if (node && node.x != null && !isNaN(node.x)) { cx += node.x; cy += node.y; count++; }
+        });
+        if (count > 0) centroids.set(id, { x: cx / count, y: cy / count });
+      }
+
+      // Aplica a força puxando os nós para o centro do seu respectivo grupo
+      const strength = (isUltra ? 0.08 : 0.04) * alpha;
+      connectedNodes.forEach(n => {
+        const cId = ncm?.get(n.id);
+        if (cId && centroids.has(cId)) {
+          const cent = centroids.get(cId);
+          n.vx -= (n.x - cent.x) * strength;
+          n.vy -= (n.y - cent.y) * strength;
+        }
+      });
+    });
 
     sim.on('tick', () => { dirtyRef.current = true; });
 
     // ─── Função de desenho dos hulls via canvas ───────────────────────────────
     const drawHulls = () => {
-      if (!showClustersRef.current) return;
+      // Se for Ultra (>15k nós), desenhar hulls só polui a tela. Aborta.
+      if (!showClustersRef.current || isUltra) return; 
+      
       const cls = clustersRef.current;
       if (!cls || cls.size === 0) return;
 
@@ -713,6 +756,14 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, no
     d3.select(canvas).on('click.select', ev => {
       if (ev.detail > 1) return;
       onSelect(getNodeAtMouse(ev.offsetX, ev.offsetY) || null);
+    });
+
+    d3.select(canvas).on('contextmenu', ev => {
+      if (onContextMenu) {
+        ev.preventDefault();
+        const found = getNodeAtMouse(ev.offsetX, ev.offsetY);
+        onContextMenu({ x: ev.clientX, y: ev.clientY, node: found || null });
+      }
     });
 
     return () => {

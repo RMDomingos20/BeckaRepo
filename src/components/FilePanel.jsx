@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { fmtBytes, hlCode } from '../utils/helpers';
 import { MiniGraph } from './MiniGraph';
+import { useTranslation } from '../hooks/useTranslation';
 
 const T = {
   bg:       '#050810',
@@ -20,7 +21,8 @@ const T = {
 };
 
 export function FilePanel({ file, graph, onSelect, termQuery }) {
-  const [tab, setTab] = useState('visão geral');
+  const { t } = useTranslation();
+  const [tab, setTab] = useState('overview');
   const [anchorId, setAnchorId] = useState(file?.id);
   const isInternalChange = useRef(false);
 
@@ -30,7 +32,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
 
   useEffect(() => {
     if (!isInternalChange.current) {
-      setTab('visão geral');
+      setTab('overview');
       setAnchorId(file?.id);
     }
     isInternalChange.current = false;
@@ -46,14 +48,14 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
   };
 
   const highlightedCode = useMemo(() => {
-    if (!file?.content || tab !== 'código/conteúdo') return null;
+    if (!file?.content || tab !== 'code') return null;
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     return hlCode(file.content, ext, termQuery);
   }, [file?.content, file?.name, tab, termQuery]);
 
   const [assetUrl, setAssetUrl] = useState(null);
   useEffect(() => {
-    if (tab === 'código/conteúdo' && file?.fileRef) {
+    if (tab === 'code' && file?.fileRef) {
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
       const isMedia = ['png','jpg','jpeg','gif','svg','webp','ico','mp3','mp4','wav','ogg'].includes(ext);
       if (isMedia) {
@@ -99,7 +101,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
   const isAudio = ['mp3','wav','ogg'].includes(ext);
   const isImage = !isVideo && !isAudio && assetUrl;
 
-  const TABS = ['visão geral', 'código/conteúdo', 'grafo local'];
+  const TABS = ['overview', 'code', 'graph'];
 
   return (
     <div style={{display:'flex', flexDirection:'column', height:'100%', overflow:'hidden'}}>
@@ -157,23 +159,23 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
         flexShrink: 0,
         background: T.bgDeep,
       }}>
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{
+        {TABS.map(tabKey => (
+          <button key={tabKey} onClick={() => setTab(tabKey)} style={{
             flex: 1,
             padding: '7px 0',
             background: 'none',
             border: 'none',
-            borderBottom: tab===t ? `2px solid ${T.accent}` : '2px solid transparent',
-            color: tab===t ? T.accent : T.textLow,
+            borderBottom: tab === tabKey ? `2px solid ${T.accent}` : '2px solid transparent',
+            color: tab === tabKey ? T.accent : T.textLow,
             fontSize: '8px',
             letterSpacing: '0.8px',
             cursor: 'pointer',
             fontFamily: T.mono,
             textTransform: 'uppercase',
-            fontWeight: tab===t ? 700 : 400,
+            fontWeight: tab === tabKey ? 700 : 400,
             transition: 'all 0.15s ease',
           }}>
-            {t}
+            {t(`fp_tab_${tabKey}`)}
           </button>
         ))}
       </div>
@@ -182,15 +184,15 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
       <div style={{flex:1, overflow:'auto'}}>
 
         {/* VISÃO GERAL */}
-        {tab==='visão geral' && (
+        {tab==='overview' && (
           <div style={{padding:14, fontFamily: T.mono}}>
 
             {/* Stats grid */}
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:16}}>
               {[
-                ['Tamanho', fmtBytes(file.size), T.textMid],
-                ['Importa', imports.length, T.amber],
-                ['Usado Por', importedBy.length, T.accent],
+                [t('fp_size'), fmtBytes(file.size), T.textMid],
+                [t('fp_imports'), imports.length, T.amber],
+                [t('fp_importedBy'), importedBy.length, T.accent],
               ].map(([l,v,c]) => (
                 <div key={l} style={{
                   background: T.bgCard,
@@ -218,7 +220,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                 padding:'8px 10px',
               }}>
                 <div style={{fontSize:'7.5px', color:T.textLow, letterSpacing:'1px', marginBottom:6, textTransform:'uppercase'}}>
-                  Acoplamento
+                  {t('fp_coupling')}
                 </div>
                 <div style={{display:'flex', gap:4, alignItems:'center'}}>
                   <div style={{flex:1, height:3, borderRadius:2, background:`${T.amber}33`, overflow:'hidden'}}>
@@ -259,7 +261,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                   alignItems: 'center',
                   gap: 6,
                 }}>
-                  <span style={{color:T.amber}}>↑</span> Importa ({imports.length})
+                  <span style={{color:T.amber}}>↑</span> {t('fp_imports')} ({imports.length})
                 </div>
                 {imports.map((e,i) => {
                   const tn = graph.nodeMap.get(rid(e.target));
@@ -309,7 +311,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                   alignItems: 'center',
                   gap: 6,
                 }}>
-                  <span style={{color:T.accent}}>↓</span> Usado Por ({importedBy.length})
+                  <span style={{color:T.accent}}>↓</span> {t('fp_importedBy')} ({importedBy.length})
                 </div>
                 {importedBy.map((e,i) => {
                   const sn = graph.nodeMap.get(rid(e.source));
@@ -349,7 +351,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
         )}
 
         {/* CÓDIGO/CONTEÚDO */}
-        {tab==='código/conteúdo' && (
+        {tab==='code' && (
           <div style={{padding:12, height:'100%', display:'flex', flexDirection:'column'}}>
             {assetUrl ? (
               <div style={{
@@ -394,7 +396,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                       borderRadius:4, fontSize:8, color:T.textMid,
                       pointerEvents:'none', border:`1px solid ${T.border}`,
                     }}>
-                      Scroll: Zoom · Drag: Pan
+                      {t('fp_img_hint')}
                     </div>
                   </div>
                 )}
@@ -425,14 +427,14 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                 border: `1px dashed ${T.border}`,
                 borderRadius: 7,
               }}>
-                Conteúdo indisponível (Arquivo não lido em RAM ou grande demais)
+                {t('fp_unavailable')}
               </div>
             )}
           </div>
         )}
 
         {/* GRAFO LOCAL */}
-        {tab==='grafo local' && (
+        {tab==='graph' && (
           <div style={{height:'calc(100vh - 200px)', minHeight:300}}>
             <MiniGraph
               anchorId={anchorId}

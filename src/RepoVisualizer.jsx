@@ -4,6 +4,9 @@ import { getFileType, buildFolderTree } from "./utils/helpers";
 import { extractImports, buildIdIndex } from "./utils/parser"; 
 import { useResizable } from "./hooks/useResizable";
 
+import { useTranslation } from "./hooks/useTranslation";
+import { SettingsModal } from "./components/SettingsModal";
+
 import { ClusterControls } from "./components/ClusteringControls";
 import { clusterGraph, buildNodeClusterMap, CLUSTER_STRATEGY } from "./utils/clustering";
 
@@ -15,6 +18,7 @@ import { useTags } from "./hooks/useTags";
 import { useLayout } from "./hooks/useLayout";
 import { ConnectionFilter } from "./components/ConnectionFilter";
 import { ManualModal } from "./components/ManualModal";
+import { ContextMenu } from "./components/ContextMenu";
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 // Identidade BeckaRepo: preto profundo + rosa/lilás da logo
@@ -193,8 +197,6 @@ const FONT_CSS = `
 }
 
 `;
-
-const VIEWS = ['árvore', 'grafo global', 'grafo termo'];
 
 // ─── LOGO SVG INLINE (Nova estrutura) ─────────────────────────────────────────
 function LogoIcon({ size = 22 }) {
@@ -454,7 +456,8 @@ export default function RepoVisualizer() {
   
   const [graph, setGraph] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [view, setView] = useState('árvore');
+  const [view, setView] = useState('view_tree');
+  const VIEWS = ['view_tree', 'view_global', 'view_term']
   
   const [search, setSearch] = useState('');
   const [termInput, setTermInput] = useState('');
@@ -465,12 +468,16 @@ export default function RepoVisualizer() {
   const [clusterDepth, setClusterDepth] = useState(1);
   const [showHulls, setShowHulls] = useState(true);
   const [isolatedCluster, setIsolatedCluster] = useState(null);
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, node: null });
 
   const [stats, setStats] = useState({files:0, code:0, edges:0, connected:0, skippedDirs:[]});
   const [repoName, setRepoName] = useState('');
 
   const { tagsData, addTag, removeTag, setNote } = useTags(repoName);
   const { showTree, showDetail, toggleTree, toggleDetail } = useLayout();
+
+  const { t, lang } = useTranslation();
+  const [showSettings, setShowSettings] = useState(false); 
   
   const inputRef = useRef(null);
 
@@ -482,8 +489,8 @@ export default function RepoVisualizer() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setTermQuery(termInput);
-      if (termInput.length >= 2) setView('grafo termo');
-      else if (view === 'grafo termo') setView('árvore');
+      if (termInput.length >= 2) setView('view_term');
+      else if (view === 'view_term') setView('view_tree');
     }, 600);
     return () => clearTimeout(timer);
   }, [termInput, view]);
@@ -539,22 +546,21 @@ export default function RepoVisualizer() {
     const pathSet = new Set(fileData.map(f => f.path));
     const nodeMap = new Map();
     for (const f of fileData) nodeMap.set(f.path, {id:f.path, name:f.name, path:f.path, size:f.size, content:f.content, ft:getFileType(f.name), weight: 0, fileRef: f.fileRef});
-    setLoadMsg('Indexando IDs de protótipos e pastas RSI...');
+    setLoadMsg(`${t('load_map')} ${fileData.length}...`);
     const idIndex = buildIdIndex(fileData);
     const edgeMap = new Map();
     let idx = 0;
     for (const f of fileData) {
       idx++;
-      if (idx % 1000 === 0) setLoadMsg(`Analisando conexões ${idx}/${fileData.length}...`);
       if (!f.content) continue;
-      for (const rel of extractImports(f.path, f.content, pathSet, idIndex)) {
-        if (!nodeMap.has(rel.target)) continue;
-        const k = f.path+'→'+rel.target;
-        const rk = rel.target+'→'+f.path;
-        if (edgeMap.has(k)) { edgeMap.get(k).detail += ', '+rel.detail; }
-        else if (edgeMap.has(rk)) { edgeMap.get(rk).bidirectional=true; }
-        else edgeMap.set(k, {id:k, source:f.path, target:rel.target, type:rel.type, detail:rel.detail, bidirectional:false});
-      }
+        for (const rel of extractImports(f.path, f.content, pathSet, idIndex)) {
+          if (!nodeMap.has(rel.target)) continue;
+          const k = f.path+'→'+rel.target;
+          const rk = rel.target+'→'+f.path;
+          if (edgeMap.has(k)) { edgeMap.get(k).detail += ', '+rel.detail; }
+          else if (edgeMap.has(rk)) { edgeMap.get(rk).bidirectional=true; }
+          else edgeMap.set(k, {id:k, source:f.path, target:rel.target, type:rel.type, detail:rel.detail, bidirectional:false});
+        }
     }
     const addStructuralEdge = (srcPath, tgtPath, type, detail) => {
       if (!nodeMap.has(srcPath) || !nodeMap.has(tgtPath) || srcPath === tgtPath) return;
@@ -617,7 +623,7 @@ export default function RepoVisualizer() {
       const MAX = 500 * 1024; // 500KB
       const BATCH_SIZE = 80;  // Arquivos lidos em paralelo por lote
 
-      setLoadMsg(`Filtrando ${rawFiles.length} arquivos...`);
+      setLoadMsg(`${t('load_filter')} ${rawFiles.length}...`);
 
       const candidates = [];
       for (const f of rawFiles) {
@@ -652,7 +658,7 @@ export default function RepoVisualizer() {
         const batch = candidates.slice(b * BATCH_SIZE, (b + 1) * BATCH_SIZE);
 
         const batchPct = 15 + Math.round((b / totalBatches) * 35);
-        setLoadMsg(`Lendo arquivos ${Math.min((b + 1) * BATCH_SIZE, candidates.length)}/${candidates.length}...`);
+        setLoadMsg(`${t('load_read')} ${Math.min((b + 1) * BATCH_SIZE, candidates.length)}/${candidates.length}...`);
         setLoadPct(batchPct);
 
         await new Promise(r => setTimeout(r, 0));
@@ -671,7 +677,7 @@ export default function RepoVisualizer() {
         fd.push(...results);
       }
 
-      setLoadMsg(`Mapeando conexões de ${fd.length} arquivos...`);
+      setLoadMsg(`${t('load_map')} ${fd.length}...`);
       setLoadPct(55);
       await new Promise(r => setTimeout(r, 20));
 
@@ -725,14 +731,42 @@ export default function RepoVisualizer() {
     // Filtra o grafo para mostrar apenas o cluster isolado
     const clusterInfo = clusters.get(isolatedCluster);
     const clusterNodeIds = new Set(clusterInfo.nodes.map(n => n.id));
-    const nodes = baseDisplayGraph.nodes.filter(n => clusterNodeIds.has(n.id));
+    const nodes = baseDisplayGraph.nodes
+      .filter(n => clusterNodeIds.has(n.id))
+      .map(n => {
+        const { x, y, vx, vy, fx, fy, ...cleanNode } = n;
+        return cleanNode;
+      });
+
     const edges = baseDisplayGraph.edges.filter(e => {
       const sId = typeof e.source === 'object' ? e.source.id : e.source;
       const tId = typeof e.target === 'object' ? e.target.id : e.target;
       return clusterNodeIds.has(sId) && clusterNodeIds.has(tId);
     });
+    
     return { ...baseDisplayGraph, nodes, edges };
   }, [baseDisplayGraph, isolatedCluster, clusters]);
+
+   const handleContextMenuOpen = ({ x, y, node }) => {
+    setContextMenu({ visible: true, x, y, node });
+  };
+
+  const contextActions = {
+    copyPath: (node) => {
+      navigator.clipboard.writeText(node.path);
+    },
+    isolateNodeCluster: (node) => {
+      const clusterId = nodeClusterMap?.get(node.id);
+      if (clusterId) setIsolatedCluster(clusterId);
+    },
+    focusNode: (node) => {
+      setSelectedFile(node);
+      if (!showDetail) toggleDetail(); // Se o painel direito estiver fechado, abre ele
+    },
+    resetIsolation: () => setIsolatedCluster(null),
+    toggleHulls: () => setShowHulls(prev => !prev),
+    exportMd: exportMarkdown
+  };
 
   // ── FASE: DROP ──────────────────────────────────────────────────────────────
   if (phase === 'drop') return (
@@ -807,7 +841,7 @@ export default function RepoVisualizer() {
           marginBottom: 6,
           letterSpacing: '1.5px',
         }}>
-          Árvore · Grafo Global · Busca In-Code
+          {t('drop_sub')}
         </div>
 
         <div style={{
@@ -816,7 +850,7 @@ export default function RepoVisualizer() {
           marginBottom: 32,
           letterSpacing: '0.5px',
         }}>
-          {dragging ? '✦ Solte para analisar ✦' : 'Solte sua pasta aqui ou selecione manualmente.'}
+          {dragging ? t('drop_drag') : t('drop_hint')}
         </div>
 
         <button
@@ -838,7 +872,7 @@ export default function RepoVisualizer() {
           onMouseEnter={e => { e.target.style.transform='translateY(-2px)'; e.target.style.boxShadow='0 8px 32px #c084fc66'; }}
           onMouseLeave={e => { e.target.style.transform='translateY(0)'; e.target.style.boxShadow='0 4px 24px #c084fc44'; }}
         >
-          SELECIONAR PASTA
+          {t('drop_btn')}
         </button>
 
         {/* Bottom hint */}
@@ -880,7 +914,7 @@ export default function RepoVisualizer() {
       </div>
 
       <div style={{color: T.textHi, fontSize: 13, fontWeight: 700, letterSpacing: '2px'}}>
-        MAPEANDO REPOSITÓRIO
+        {t('load_title')}
       </div>
 
       <div style={{color: T.textMid, fontSize: 10, minHeight: 16, letterSpacing: '0.5px'}}>
@@ -956,7 +990,7 @@ export default function RepoVisualizer() {
 
         {/* Stats */}
         <span className="br-stat">
-          <strong>{stats.code}</strong> arqs · <strong>{stats.edges}</strong> conexões
+          <strong>{stats.code}</strong> {t('hdr_files')} · <strong>{stats.edges}</strong> {t('hdr_edges')}
         </span>
 
         <div style={{flex:1}} />
@@ -969,16 +1003,16 @@ export default function RepoVisualizer() {
           overflow: 'hidden',
           flexShrink: 0,
         }}>
-          {VIEWS.map((v, i) => (
+          {VIEWS.map((v) => (
             <button
               key={v}
-              className={`br-view-tab${view===v ? ' active' : ''}`}
+              className={`br-view-tab${view === v ? ' active' : ''}`}
               onClick={() => {
                 setView(v);
-                if (v !== 'grafo termo') { setTermInput(''); setTermQuery(''); }
+                if (v !== 'view_term') { setTermInput(''); setTermQuery(''); }
               }}
             >
-              {v.toUpperCase()}
+              {t(v).toUpperCase()} {/* AQUI OCORRE A TRADUÇÃO */}
             </button>
           ))}
         </div>
@@ -987,14 +1021,14 @@ export default function RepoVisualizer() {
         <input
           value={search}
           onChange={e=>setSearch(e.target.value)}
-          placeholder="🔍 Nome arquivo..."
+          placeholder={t('hdr_search')}
           className="br-input"
           style={{width:130}}
         />
         <input
           value={termInput}
           onChange={e=>setTermInput(e.target.value)}
-          placeholder="✦ In-Code / Relações..."
+          placeholder={t('hdr_incode')}
           className="br-input"
           style={{
             width:165,
@@ -1004,17 +1038,17 @@ export default function RepoVisualizer() {
         />
 
         {/* Export MD */}
-        <button className="br-btn primary" onClick={exportMarkdown} title="Baixar mapa em formato Markdown">
+        <button className="br-btn primary" onClick={exportMarkdown} title={t('ctx_export')}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
           </svg>
-          MAPA MD
+          {t('hdr_map')}
         </button>
         
         <button 
           className="br-btn" 
           onClick={() => setShowManual(true)} 
-          title="Ver o Manual de Instruções"
+          title={t('hdr_guide')}
           style={{ borderColor: '#c084fc', color: '#c084fc' }}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1022,7 +1056,15 @@ export default function RepoVisualizer() {
             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
             <line x1="12" y1="17" x2="12.01" y2="17"></line>
           </svg>
-          GUIA
+          {t('hdr_guide')}
+        </button>
+        
+        <button 
+          className="br-btn" 
+          onClick={() => setShowSettings(true)} 
+          title={t('cfg_title')}
+        >
+          ⚙️
         </button>
 
         {/* Trocar repo */}
@@ -1030,7 +1072,7 @@ export default function RepoVisualizer() {
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
           </svg>
-          TROCAR
+          {t('hdr_swap')}
         </button>
 
         {/* Toggle detail */}
@@ -1042,7 +1084,7 @@ export default function RepoVisualizer() {
       </div>
 
       {/* ── BARRAS DE FILTRO E CLUSTER ── */}
-      {graph && view === 'grafo global' && (
+      {graph && view === 'view_global' && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <ConnectionFilter graph={graph} activeTypes={activeEdgeTypes} setActiveTypes={setActiveEdgeTypes} />
           <ClusterControls 
@@ -1074,11 +1116,11 @@ export default function RepoVisualizer() {
                 background: T.bgDeep,
               }}>
                 <span style={{color:T.textMid, fontSize:'9px', letterSpacing:'1.5px', textTransform:'uppercase', fontWeight:700}}>
-                  Explorador
+                  {t('tree_explorer')}
                 </span>
                 {search && (
                   <span style={{color:T.accent, fontSize:'8px', letterSpacing:'0.5px'}}>
-                    ✦ filtrado
+                    {t('tree_filtered')}
                   </span>
                 )}
               </div>
@@ -1118,7 +1160,7 @@ export default function RepoVisualizer() {
               animation:'fadeIn 0.2s ease',
             }}>
               <div style={{color:T.textMid, fontSize:'8px', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:4}}>
-                ✦ Palavra Ativa
+                {t('term_active')}
               </div>
               <div style={{color:'#f43f5e', fontSize:14, fontWeight:800}}>{termQuery}</div>
               <div style={{marginTop:6, color:T.textMid, fontSize:10}}>
@@ -1127,11 +1169,19 @@ export default function RepoVisualizer() {
             </div>
           )}
 
-          {view==='grafo global' && displayGraph && (
-            <CanvasGlobalGraph graph={displayGraph} selectedFile={selectedFile} onSelect={setSelectedFile} />
+          {view==='view_global' && displayGraph && (
+            <CanvasGlobalGraph 
+              graph={displayGraph} 
+              selectedFile={selectedFile} 
+              onSelect={setSelectedFile}
+              clusters={clusters}
+              nodeClusterMap={nodeClusterMap}
+              showClusters={showHulls}
+              onContextMenu={handleContextMenuOpen} 
+            />
           )}
-          
-          {view==='grafo termo' && termGraph && (
+
+          {view==='view_term' && termGraph && (
             termGraph.nodes.length > 0 ? (
               <CanvasGlobalGraph graph={termGraph} selectedFile={selectedFile} onSelect={setSelectedFile} isTermGraph />
             ) : (
@@ -1145,13 +1195,13 @@ export default function RepoVisualizer() {
             )
           )}
 
-          {view==='árvore' && (
+          {view==='view_tree' && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100%',gap:14,padding:20}}>
               <div style={{opacity:0.08}}>
                 <LogoIcon size={56} />
               </div>
               <div style={{color:T.textLow, fontSize:11, textAlign:'center', letterSpacing:'0.5px'}}>
-                Selecione na árvore à esquerda ou pesquise In-Code ✦
+                {t('empty_tree')}
               </div>
             </div>
           )}
@@ -1185,7 +1235,13 @@ export default function RepoVisualizer() {
           </>
         )}
       </div>
-      {showManual && <ManualModal onClose={() => setShowManual(false)} />}
-    </div>
+        {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+        {showManual && <ManualModal onClose={() => setShowManual(false)} />}
+        <ContextMenu 
+          menu={contextMenu} 
+          closeMenu={() => setContextMenu({ ...contextMenu, visible: false })} 
+          actions={contextActions} 
+        />
+      </div> // Fim do componente RepoVisualizer
   );
 }

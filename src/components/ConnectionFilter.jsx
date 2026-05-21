@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from '../hooks/useTranslation';
 
 const T = {
   bg:       '#030609',
@@ -32,6 +33,8 @@ function getTypeColor(type) {
 }
 
 export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
+  const { t } = useTranslation(); // Puxando o tradutor
+
   const availableTypes = useMemo(() => {
     if (!graph) return [];
     const types = new Set();
@@ -48,7 +51,7 @@ export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
     setActiveTypes(newTypes);
   };
 
-  const allActive = availableTypes.every(t => activeTypes.has(t));
+  const allActive = availableTypes.every(type => activeTypes.has(type));
 
   const toggleAll = () => {
     if (allActive) setActiveTypes(new Set());
@@ -65,7 +68,7 @@ export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
       flexWrap: 'wrap',
       alignItems: 'center',
     }}>
-      {/* Label */}
+      {/* Label Principal */}
       <span style={{
         fontSize: '8.5px',
         color: T.textLow,
@@ -75,7 +78,7 @@ export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
         marginRight: 6,
         flexShrink: 0,
       }}>
-        Conexões
+        {t('cf_title')}
       </span>
 
       {/* Toggle All */}
@@ -96,12 +99,12 @@ export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
           flexShrink: 0,
         }}
       >
-        {allActive ? 'TODOS ✦' : 'TODOS'}
+        {allActive ? `${t('cf_all')} ✦` : t('cf_all')}
       </button>
 
       <div style={{width:1, height:14, background:T.border, flexShrink:0}} />
 
-      {/* Type pills */}
+      {/* Type pills dinâmicos */}
       {availableTypes.map(type => {
         const isActive = activeTypes.has(type);
         const color = getTypeColor(type);

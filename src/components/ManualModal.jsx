@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from '../hooks/useTranslation';
 
 const T = {
   bg: '#050810', bgDeep: '#020408', bgPanel: '#03060d', border: '#1a1f35',
@@ -42,15 +43,16 @@ const CodeTag = ({ children }) => (
 );
 
 export function ManualModal({ onClose }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('interface');
 
   const tabs = [
-    { id: 'interface',   label: '1. Controles e Interface' },
-    { id: 'painel',      label: '2. Painel Lateral & Tags' },
-    { id: 'fundamentos', label: '3. Lendo o Grafo Visual' },
-    { id: 'clusters',    label: '4. Nuvens e Clusters' },
-    { id: 'conexoes',    label: '5. Como o Parser Lê?' },
-    { id: 'render',      label: '6. Performance da Engine' },
+    { id: 'interface',   label: t('man_tab_1') },
+    { id: 'painel',      label: t('man_tab_2') },
+    { id: 'fundamentos', label: t('man_tab_3') },
+    { id: 'clusters',    label: t('man_tab_4') },
+    { id: 'conexoes',    label: t('man_tab_5') },
+    { id: 'render',      label: t('man_tab_6') },
   ];
 
   return (
@@ -66,7 +68,7 @@ export function ManualModal({ onClose }) {
         <div style={{ padding: '16px 24px', borderBottom: `1px solid ${T.border}`, background: T.bgDeep, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 22, color: T.accent }}>✦</span>
-            <span style={{ color: T.textHi, fontSize: 16, fontWeight: 800, letterSpacing: '1px' }}>DOCUMENTAÇÃO TÉCNICA E MANUAL</span>
+            <span style={{ color: T.textHi, fontSize: 16, fontWeight: 800, letterSpacing: '1px' }}>{t('man_header')}</span>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: `1px solid ${T.border}`, color: T.textMid, borderRadius: 6, width: 32, height: 32, cursor: 'pointer', transition: 'all 0.2s' }}
              onMouseEnter={e => { e.target.style.color = T.rose; e.target.style.borderColor = T.rose; }} onMouseLeave={e => { e.target.style.color = T.textMid; e.target.style.borderColor = T.border; }}>✕</button>
@@ -75,13 +77,13 @@ export function ManualModal({ onClose }) {
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           {/* MENU LATERAL */}
           <div style={{ width: 240, borderRight: `1px solid ${T.border}`, background: T.bgPanel, display: 'flex', flexDirection: 'column', padding: 16, gap: 8 }}>
-            {tabs.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                background: tab === t.id ? T.accent + '22' : 'transparent', border: '1px solid', borderColor: tab === t.id ? T.accent : 'transparent',
-                color: tab === t.id ? T.accent : T.textMid, padding: '10px 14px', borderRadius: 6, textAlign: 'left', fontSize: 11, cursor: 'pointer',
-                fontWeight: tab === t.id ? 700 : 400, transition: 'all 0.2s', letterSpacing: '0.5px'
+            {tabs.map(tData => (
+              <button key={tData.id} onClick={() => setTab(tData.id)} style={{
+                background: tab === tData.id ? T.accent + '22' : 'transparent', border: '1px solid', borderColor: tab === tData.id ? T.accent : 'transparent',
+                color: tab === tData.id ? T.accent : T.textMid, padding: '10px 14px', borderRadius: 6, textAlign: 'left', fontSize: 11, cursor: 'pointer',
+                fontWeight: tab === tData.id ? 700 : 400, transition: 'all 0.2s', letterSpacing: '0.5px'
               }}>
-                {t.label}
+                {tData.label}
               </button>
             ))}
           </div>
@@ -92,18 +94,18 @@ export function ManualModal({ onClose }) {
             {/* 1. INTERFACE E CONTROLES */}
             {tab === 'interface' && (
               <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h2 style={{ color: T.textHi, marginBottom: 16 }}>Navegação e Comandos Globais</h2>
-                <p>O BeckaRepo possui ferramentas no topo da tela para filtrar o "ruído" visual e extrair relatórios.</p>
+                <h2 style={{ color: T.textHi, marginBottom: 16 }}>{t('man_1_h2')}</h2>
+                <p>{t('man_1_p1')}</p>
 
-                <h4 style={{ color: T.textHi, marginTop: 24 }}>1. Barra de Ações Rápidas (Header Superior)</h4>
+                <h4 style={{ color: T.textHi, marginTop: 24 }}>{t('man_1_h4_1')}</h4>
                 <ul style={{ paddingLeft: 20, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <li><BtnEx label="MAPA MD" /> Exporta toda a árvore de diretórios atual e estatísticas do projeto para um arquivo <strong>Markdown (.md)</strong>. Ideal para gerar rascunhos automáticos de Wikis ou atualizações para o <code>README.md</code> do repositório.</li>
-                  <li><strong>Modos de Visão:</strong> Alterne entre a <CodeTag>ÁRVORE</CodeTag> (leitura limpa de pastas) e <CodeTag>GRAFO GLOBAL</CodeTag> (visão arquitetural da rede).</li>
-                  <li><strong>Buscas:</strong> O campo 🔍 filtra arquivos na árvore lateral. O campo ✦ <strong>In-Code</strong> faz uma varredura interna (Regex) lendo o conteúdo dos arquivos e ativa o modo <em>Grafo Termo</em>, isolando na tela apenas quem tem aquela palavra exata (ex: <code>useState</code>).</li>
+                  <li><BtnEx label={t('hdr_map')} />{t('man_1_li1_1')}<strong>Markdown (.md)</strong>{t('man_1_li1_2')}<code>README.md</code>{t('man_1_li1_3')}</li>
+                  <li><strong>{t('man_1_li2_1')}</strong>{t('man_1_li2_2')}<CodeTag>{t('view_tree').toUpperCase()}</CodeTag>{t('man_1_li2_3')}<CodeTag>{t('view_global').toUpperCase()}</CodeTag>{t('man_1_li2_4')}</li>
+                  <li><strong>{t('man_1_li3_1')}</strong>{t('man_1_li3_2')}<strong>{t('hdr_incode').replace('✦ ', '')}</strong>{t('man_1_li3_3')}<em>{t('view_term').toUpperCase()}</em>{t('man_1_li3_4')}<code>useState</code>).</li>
                 </ul>
 
-                <h4 style={{ color: T.textHi, marginTop: 24 }}>2. Filtro de Conexões (Arestas)</h4>
-                <p>Em projetos gigantes, as linhas do grafo podem formar uma massa opaca ininteligível. A barra logo abaixo do Header permite ligar ou desligar os <strong>Tipos de Relacionamento</strong> detectados:</p>
+                <h4 style={{ color: T.textHi, marginTop: 24 }}>{t('man_1_h4_2')}</h4>
+                <p>{t('man_1_p2')}</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 14, background: '#0d1326', padding: 16, borderRadius: 8, border: `1px solid ${T.border}` }}>
                   <PillEx c={T.accent} label="import" />
                   <PillEx c="#38bdf8" label="sibling" />
@@ -112,53 +114,60 @@ export function ManualModal({ onClose }) {
                   <PillEx c="#f97316" label="rsi-ref" />
                 </div>
                 <p style={{ marginTop: 12 }}>
-                  <strong>Exemplos:</strong> Desativar <CodeTag>sibling</CodeTag> (arquivos na mesma pasta) ajuda a ver apenas dependências de código reais (<CodeTag>import</CodeTag>). Filtrar por <CodeTag>prototype-parent</CodeTag> isola apenas as árvores de herança de entidades YAML.
+                  <strong>{t('man_1_p3_1')}</strong>{t('man_1_p3_2')}<CodeTag>sibling</CodeTag>{t('man_1_p3_3')}<CodeTag>import</CodeTag>{t('man_1_p3_4')}<CodeTag>prototype-parent</CodeTag>{t('man_1_p3_5')}
                 </p>
+
+                <h4 style={{ color: T.textHi, marginTop: 24 }}>{t('man_1_h4_3')}</h4>
+                <p>{t('man_1_p4')}</p>
+                <ul style={{ paddingLeft: 20, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <li><strong>{t('man_1_li4_1')}</strong>{t('man_1_li4_2')}<CodeTag>{t('man_1_li4_3')}</CodeTag>{t('man_1_li4_4')}<strong>{t('ctx_iso_cluster').replace('🔍 ', '')}</strong>{t('man_1_li4_5')}</li>
+                  <li><strong>{t('man_1_li5_1')}</strong>{t('man_1_li5_2')}</li>
+                </ul>
               </div>
             )}
 
             {/* 2. PAINEL LATERAL DIREITO & TAGS */}
             {tab === 'painel' && (
               <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h2 style={{ color: T.textHi, marginBottom: 16 }}>Análise de Arquivo (Painel Direito)</h2>
-                <p>Ao clicar em um nó ou em um item na árvore, o inspetor detalhado se abre. Ele é sua ferramenta de auditoria focada.</p>
+                <h2 style={{ color: T.textHi, marginBottom: 16 }}>{t('man_2_h2')}</h2>
+                <p>{t('man_2_p1')}</p>
                 
-                <h4 style={{ color: T.textHi, marginTop: 24 }}>Abas de Contexto</h4>
+                <h4 style={{ color: T.textHi, marginTop: 24 }}>{t('man_2_h4_1')}</h4>
                 <ul style={{ paddingLeft: 20, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <li><strong>Visão Geral:</strong> Mostra o Nível de Acoplamento. <strong>Importa (↑)</strong> são dependências requeridas por este arquivo. <strong>Usado Por (↓)</strong> revela o impacto: se este número for alto, alterar este arquivo pode quebrar o projeto inteiro.</li>
-                  <li><strong>Código/Conteúdo:</strong> Visualizador Raw com <em>Syntax Highlighting</em>. Se o arquivo for uma mídia (MP4, PNG, MP3), o player nativo será renderizado. Se ativou a <em>Busca In-Code</em>, a palavra-chave é grifada em <span style={{color:'#fff', background:T.rose, padding:'0 2px'}}>vermelho</span>.</li>
-                  <li><strong>Grafo Local:</strong> Ver explicação detalhada no final deste manual (N-Hop Analysis).</li>
+                  <li><strong>{t('man_2_li1_1')}</strong>{t('man_2_li1_2')}<strong>{t('fp_imports')} (↑)</strong>{t('man_2_li1_3')}<strong>{t('fp_importedBy')} (↓)</strong>{t('man_2_li1_4')}</li>
+                  <li><strong>{t('man_2_li2_1')}</strong>{t('man_2_li2_2')}<span style={{color:'#fff', background:T.rose, padding:'0 2px'}}>{t('man_2_li2_3')}</span>.</li>
+                  <li><strong>{t('man_2_li3_1')}</strong>{t('man_2_li3_2')}</li>
                 </ul>
 
-                <h4 style={{ color: T.amber, marginTop: 24 }}>🏷️ Tags e Anotações (Audit State)</h4>
+                <h4 style={{ color: T.amber, marginTop: 24 }}>{t('man_2_h4_2')}</h4>
                 <div style={{ background: '#f59e0b11', border: `1px solid ${T.amber}44`, padding: 16, borderRadius: 8, marginTop: 12 }}>
-                  <p>O BeckaRepo possui um sistema embutido (<code>useTags.js</code>) para facilitar a auditoria de código (Code Review). Você pode classificar os nós manualmente.</p>
-                  <p style={{ marginTop: 8 }}><strong>Como funciona:</strong> Adicione tags como <CodeTag>refatorar</CodeTag>, <CodeTag>core</CodeTag> ou <CodeTag>legado</CodeTag>, e adicione Notas textuais para si mesmo. Essas informações são salvas localmente no <strong>Cache do seu Navegador (LocalStorage)</strong> associadas ao caminho do arquivo, então elas persistem mesmo se você recarregar a página!</p>
+                  <p>{t('man_2_p2')}</p>
+                  <p style={{ marginTop: 8 }}><strong>{t('man_2_p3_1')}</strong>{t('man_2_p3_2')}<CodeTag>refactoring</CodeTag>, <CodeTag>core</CodeTag> ou <CodeTag>legacy</CodeTag>{t('man_2_p3_3')}<strong>LocalStorage</strong>{t('man_2_p3_4')}</p>
                 </div>
               </div>
             )}
 
-            {/* 3. FUNDAMENTOS VISUAIS (Antigo 1) */}
+            {/* 3. FUNDAMENTOS VISUAIS */}
             {tab === 'fundamentos' && (
               <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h2 style={{ color: T.textHi, marginBottom: 16 }}>Fundamentos Visuais (Teoria dos Grafos)</h2>
-                <p>O BeckaRepo modela o código como um <strong>Grafo Direcionado</strong>. Os elementos não são aleatórios; eles mapeiam métricas diretas.</p>
+                <h2 style={{ color: T.textHi, marginBottom: 16 }}>{t('man_3_h2')}</h2>
+                <p>{t('man_3_p1')}<strong>Grafo Direcionado (Directed Graph)</strong>{t('man_3_p2')}</p>
                 
-                <h4 style={{ color: T.textHi, marginTop: 24, marginBottom: 12 }}>Nós (Vértices)</h4>
-                <p>O <strong>raio de um nó</strong> é baseado na <CodeTag>Centralidade de Grau (Degree Centrality)</CodeTag> — arquivos muito importados ficam enormes (ex: Utils e Core), enquanto arquivos finais (UI views) ficam pequenos nas bordas.</p>
+                <h4 style={{ color: T.textHi, marginTop: 24, marginBottom: 12 }}>{t('man_3_h4_1')}</h4>
+                <p>{t('man_3_p3')}<strong>{t('man_3_p4')}</strong>{t('man_3_p5')}</p>
                 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
-                  <NodeEx c={T.amber} r={8} label="Código-fonte (JS, TS, C#, etc)" />
-                  <NodeEx c={T.rose} r={8} label="Markup/Estilos (HTML, CSS)" />
-                  <NodeEx c={T.green} r={8} label="Assets (Imagens, Mídias)" />
-                  <NodeEx c={T.teal} r={14} outline label="Nó Selecionado/Foco" />
+                  <NodeEx c={T.amber} r={8} label={t('man_3_lbl_1')} />
+                  <NodeEx c={T.rose} r={8} label={t('man_3_lbl_2')} />
+                  <NodeEx c={T.green} r={8} label={t('man_3_lbl_3')} />
+                  <NodeEx c={T.teal} r={14} outline label={t('man_3_lbl_4')} />
                 </div>
 
-                <h4 style={{ color: T.textHi, marginTop: 32, marginBottom: 12 }}>Arestas (Edges)</h4>
+                <h4 style={{ color: T.textHi, marginTop: 32, marginBottom: 12 }}>{t('man_3_h4_2')}</h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16, background: '#0d1326', padding: 16, borderRadius: 8, border: `1px solid ${T.border}` }}>
-                  <EdgeEx c="#1e3a5f" label="Acoplamento Comum" />
-                  <EdgeEx c={T.teal} label="Aresta conectada ao Foco" />
-                  <EdgeEx c={T.rose} label="Aresta do Grafo Termo" />
+                  <EdgeEx c="#1e3a5f" label={t('man_3_lbl_5')} />
+                  <EdgeEx c={T.teal} label={t('man_3_lbl_6')} />
+                  <EdgeEx c={T.rose} label={t('man_3_lbl_7')} />
                 </div>
               </div>
             )}
@@ -166,21 +175,24 @@ export function ManualModal({ onClose }) {
             {/* 4. CLUSTERS E FÍSICA */}
             {tab === 'clusters' && (
               <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h2 style={{ color: T.textHi, marginBottom: 16 }}>Nuvens, Agrupamentos e Física Magnética</h2>
-                <p>A barra de "Clusters" pinta "regiões lógicas" usando algoritmos pesados (<CodeTag>Clustering</CodeTag>).</p>
+                <h2 style={{ color: T.textHi, marginBottom: 16 }}>{t('man_4_h2')}</h2>
+                <p>{t('man_4_p1')}<CodeTag>Clustering</CodeTag>).</p>
 
-                <h4 style={{ color: T.textHi, marginTop: 24 }}>As 4 Estratégias:</h4>
+                <h4 style={{ color: T.textHi, marginTop: 24 }}>{t('man_4_h4_1')}</h4>
                 <ul style={{ paddingLeft: 20, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <li><strong style={{color:T.accent}}>Pasta:</strong> Separa por diretórios. Ajuste o <CodeTag>Lvl 1, 2...</CodeTag> para quebrar pastas profundas (ex: <CodeTag>src/controllers</CodeTag>).</li>
-                  <li><strong style={{color:T.accent}}>Arquitetura:</strong> Usa Regex nos nomes para agrupar padrões de projeto (Controllers, Services, Models, Mocks, UI).</li>
-                  <li><strong style={{color:T.accent}}>Módulos (LPA):</strong> Aplica o <em>Label Propagation Algorithm</em> de Redes Complexas. Ele detecta quem se importa muito e deduz "Módulos Naturais" que conversam muito internamente. Ideal para destrinchar <em>Código Espaguete</em>.</li>
-                  <li><strong style={{color:T.accent}}>Tipos:</strong> Separa código rígido, arquivos de configuração e mídias.</li>
+                  <li><strong style={{color:T.accent}}>{t('man_4_li1_1')}</strong>{t('man_4_li1_2')}<CodeTag>Lvl 1, 2...</CodeTag>{t('man_4_li1_3')}</li>
+                  <li><strong style={{color:T.accent}}>{t('man_4_li2_1')}</strong>{t('man_4_li2_2')}</li>
+                  <li><strong style={{color:T.accent}}>{t('man_4_li3_1')}</strong>{t('man_4_li3_2')}<em>{t('man_4_li3_3')}</em>.</li>
+                  <li><strong style={{color:T.accent}}>{t('man_4_li4_1')}</strong>{t('man_4_li4_2')}</li>
                 </ul>
 
-                <h4 style={{ color: T.teal, marginTop: 24 }}>◉ Física Ativa e Isolamento O(1)</h4>
-                <p>Ao ativar as <strong>Nuvens Físicas</strong>, a simulação Barnes-Hut do D3 cria um atrator gravitacional. O código força arquivos do mesmo cluster a voarem para o mesmo ponto, enquanto um <strong>Casco Convexo (Convex Hull)</strong> desenha uma bolha em volta deles.</p>
-                <div style={{ background: '#00d4aa11', border: `1px solid ${T.teal}44`, padding: 16, borderRadius: 8, marginTop: 12 }}>
-                  <strong>A Ferramenta de Isolar:</strong> Use o <em>Dropdown</em> (Select) no final da barra de Clusters para "Isolar" um grupo específico. A engine vai suspender o render de todos os outros arquivos instantaneamente, deixando você focar no micro-sistema.
+                <h4 style={{ color: T.teal, marginTop: 24 }}>{t('man_4_h4_2')}</h4>
+                <p>{t('man_4_p2')}<strong>{t('man_4_p3')}</strong>{t('man_4_p4')}</p>
+                
+                <div style={{ background: '#00d4aa11', border: `1px solid ${T.teal}44`, padding: 16, borderRadius: 8, marginTop: 16 }}>
+                  <strong style={{ display: 'block', marginBottom: 8, color: T.teal }}>{t('man_4_str_1')}</strong>
+                  <p>{t('man_4_p5')}</p>
+                  <p style={{ marginTop: 8 }}>{t('man_4_p6')}<strong>{t('man_4_p7')}</strong>{t('man_4_p8')}<CodeTag>{t('ctx_show_all')}</CodeTag>.</p>
                 </div>
               </div>
             )}
@@ -188,28 +200,32 @@ export function ManualModal({ onClose }) {
             {/* 5. PARSER / CONEXÕES */}
             {tab === 'conexoes' && (
               <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h2 style={{ color: T.textHi, marginBottom: 16 }}>Como a Extração é Feita?</h2>
-                <p>O Parser não requer compilação. Usa um modelo híbrido de <strong>AST-Regex e Índices Semânticos Hash</strong>.</p>
+                <h2 style={{ color: T.textHi, marginBottom: 16 }}>{t('man_5_h2')}</h2>
+                <p>{t('man_5_p1')}</p>
 
-                <h4 style={{ color: T.textHi, marginTop: 24 }}>Linguagens e CI/CD</h4>
-                <p>Mapeia desde Web (<CodeTag>import</CodeTag>, <CodeTag>require</CodeTag>) até linguagens pesadas (<CodeTag>#include</CodeTag> C++, <CodeTag>use</CodeTag> Rust). Além disso, vincula lógicas DevOps: YAMLs de Actions são magneticamente ligados ao <CodeTag>package.json</CodeTag> ou <CodeTag>Makefile</CodeTag> via a aresta sintética <CodeTag>ci-ref</CodeTag>.</p>
+                <h4 style={{ color: T.textHi, marginTop: 24 }}>{t('man_5_h4_1')}</h4>
+                <p>{t('man_5_p2')}<CodeTag>package.json</CodeTag>{t('man_5_p3')}<CodeTag>ci-ref</CodeTag>.</p>
 
-                <h4 style={{ color: T.textHi, marginTop: 24 }}>A Garra Nuclear e Projetos Específicos (RSI)</h4>
-                <p>Para ler arquivos sem padrão forte (JSON, Strings em C#), a ferramenta usa uma varredura profunda que captura qualquer string que se pareça com o caminho de um asset (Imagens, Áudios, YAMLs).</p>
-                <p style={{ marginTop: 8 }}>Em Engines de jogos com estruturas <CodeTag>.rsi</CodeTag>, o sistema possui um motor Fuzzy capaz de entender que se um C# invocar <CodeTag>sprite: Mobs/Joe.rsi</CodeTag>, ele deve criar a aresta não para a pasta, mas escavar até encontrar o arquivo <CodeTag>meta.json</CodeTag> real dessa entidade.</p>
+                <h4 style={{ color: T.textHi, marginTop: 24 }}>{t('man_5_h4_2')}</h4>
+                <p>{t('man_5_p4')}</p>
+                <p style={{ marginTop: 8 }}>{t('man_5_p5')}<CodeTag>.rsi</CodeTag>{t('man_5_p6')}<CodeTag>sprite: Mobs/Joe.rsi</CodeTag>{t('man_5_p7')}<CodeTag>meta.json</CodeTag>{t('man_5_p8')}</p>
               </div>
             )}
 
             {/* 6. RENDERIZAÇÃO E MINI-GRAFO */}
             {tab === 'render' && (
               <div style={{ animation: 'fadeIn 0.3s ease' }}>
-                <h2 style={{ color: T.textHi, marginBottom: 16 }}>Performance Extrema e Estudo de Escopo</h2>
+                <h2 style={{ color: T.textHi, marginBottom: 16 }}>{t('man_6_h2')}</h2>
                 
-                <h4 style={{ color: T.textHi }}>Motor Duplo (SVG ⇄ WebGL Canvas)</h4>
-                <p>O BeckaRepo transita dinamicamente sua renderização. Até 800 nós, ele usa SVG puro para permitir hiper-nitidez e CSS. Ao ultrapassar, injeta a <strong>Engine Canvas</strong> otimizada com matrizes matemáticas de <em>Culling</em> (desenhando apenas os pixels e textos do que está visível na tela). Permite rodar grafos massivos de 15 a 50 mil nós a 60FPS constantes.</p>
+                <h4 style={{ color: T.textHi }}>{t('man_6_h4_1')}</h4>
+                <p>{t('man_6_p1')}<strong>{t('man_6_p2')}</strong>{t('man_6_p3')}</p>
+                
+                <div style={{ background: '#f43f5e11', border: `1px solid ${T.rose}44`, padding: 12, borderRadius: 8, marginTop: 12 }}>
+                  <strong style={{ color: T.rose }}>{t('man_6_str_1')}</strong>{t('man_6_p4')}
+                </div>
 
-                <h4 style={{ color: T.amber, marginTop: 32 }}>Mini-Grafo (N-Hop Neighborhood Analysis)</h4>
-                <p>A aba "Grafo Local" no painel direito roda sua própria física separada. Seu objetivo é ajudar no rastreamento de bugs isolando a <em>Árvore de Dependência</em>.</p>
+                <h4 style={{ color: T.amber, marginTop: 32 }}>{t('man_6_h4_2')}</h4>
+                <p>{t('man_6_p5')}<em>{t('man_6_p6')}</em>.</p>
                 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '24px 0', border:`1px dashed ${T.border}`, padding: 20, borderRadius:8 }}>
                   <svg width="400" height="120" viewBox="0 0 400 120">
@@ -220,21 +236,21 @@ export function ManualModal({ onClose }) {
                     <line x1="100" y1="60" x2="20" y2="60" stroke="#2a1f45" strokeWidth="1" strokeDasharray="3,3" />
                     
                     <circle cx="200" cy="60" r="16" fill={T.amber} stroke="#fff" strokeWidth="2" />
-                    <text x="200" y="85" textAnchor="middle" fill="#fff" fontSize="10">Arquivo Alvo</text>
+                    <text x="200" y="85" textAnchor="middle" fill="#fff" fontSize="10">{t('man_6_lbl_1')}</text>
 
                     <circle cx="100" cy="60" r="10" fill={T.purple} />
-                    <text x="100" y="85" textAnchor="middle" fill={T.purple} fontSize="10">Hop 1 (Chama o Alvo)</text>
+                    <text x="100" y="85" textAnchor="middle" fill={T.purple} fontSize="10">{t('man_6_lbl_2')}</text>
 
                     <circle cx="300" cy="30" r="10" fill={T.purple} />
                     <circle cx="300" cy="90" r="10" fill={T.purple} />
-                    <text x="320" y="60" fill={T.purple} fontSize="10">Hop 1 (Alvo Chama)</text>
+                    <text x="320" y="60" fill={T.purple} fontSize="10">{t('man_6_lbl_3')}</text>
 
                     <circle cx="380" cy="10" r="6" fill="#64748b" />
                     <circle cx="20" cy="60" r="6" fill="#64748b" />
-                    <text x="20" y="80" textAnchor="middle" fill="#64748b" fontSize="9">Hop 2</text>
+                    <text x="20" y="80" textAnchor="middle" fill="#64748b" fontSize="9">{t('man_6_lbl_4')}</text>
                   </svg>
                 </div>
-                <p>O algoritmo puxa o <strong>Hop 1</strong> (quem depende diretamente de mim e de quem eu dependo). Depois puxa o <strong>Hop 2</strong> (o efeito dominó 1 nível à frente) aplicando um filtro de massa limitador (50 nós) para evitar que a tela quebre caso um dos vizinhos seja o <CodeTag>utils.js</CodeTag> do repositório inteiro.</p>
+                <p>{t('man_6_p7')}<strong>Hop 1</strong>{t('man_6_p8')}<strong>Hop 2</strong>{t('man_6_p9')}</p>
               </div>
             )}
 

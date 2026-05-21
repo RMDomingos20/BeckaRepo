@@ -1,5 +1,6 @@
 import React from 'react';
 import { CLUSTER_STRATEGY } from '../utils/clustering';
+import { useTranslation } from '../hooks/useTranslation';
 
 const T = {
   bg: '#030609', border: '#1a1f35', accent: '#c084fc',
@@ -7,15 +8,20 @@ const T = {
   textLow: '#3d3550', textHi: '#f0e6ff', mono: "'JetBrains Mono', monospace",
 };
 
-const STRATEGIES = [
-  { key: CLUSTER_STRATEGY.FOLDER,       label: 'Pasta',      icon: '📁' },
-  { key: CLUSTER_STRATEGY.SEMANTIC,     label: 'Arquitetura',icon: '🏗' },
-  { key: CLUSTER_STRATEGY.CONNECTIVITY, label: 'Módulos',    icon: '🔗' },
-  { key: CLUSTER_STRATEGY.TYPE,         label: 'Tipo',       icon: '🏷' },
-];
-
 export function ClusterControls({ strategy, setStrategy, showHulls, setShowHulls, clusters, depth, setDepth, isolatedCluster, setIsolatedCluster }) {
+  // 1. Instancia o tradutor
+  const { t } = useTranslation(); 
+  
+  // 2. A variável que estava faltando!
   const clusterArray = Array.from(clusters?.values() || []);
+
+  // 3. Estratégias (agora aqui dentro, com acesso ao `t`)
+  const STRATEGIES = [
+    { key: CLUSTER_STRATEGY.FOLDER,       label: t('cc_folder'),      icon: '📁' },
+    { key: CLUSTER_STRATEGY.SEMANTIC,     label: t('cc_semantic'),    icon: '🏗' },
+    { key: CLUSTER_STRATEGY.CONNECTIVITY, label: t('cc_modules'),     icon: '🔗' },
+    { key: CLUSTER_STRATEGY.TYPE,         label: t('cc_type'),        icon: '🏷' },
+  ];
 
   return (
     <div style={{
@@ -23,7 +29,7 @@ export function ClusterControls({ strategy, setStrategy, showHulls, setShowHulls
       display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
     }}>
       <span style={{ fontSize: '8.5px', color: T.textLow, textTransform: 'uppercase', letterSpacing: '1.5px', fontFamily: T.mono, marginRight: 4 }}>
-        Clusters
+        {t('cc_title')}
       </span>
 
       {STRATEGIES.map(s => {
@@ -63,7 +69,7 @@ export function ClusterControls({ strategy, setStrategy, showHulls, setShowHulls
           cursor: 'pointer', fontFamily: T.mono, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
         }}
       >
-        {showHulls ? '◉' : '○'} NUVENS FÍSICAS
+        {showHulls ? '◉' : '○'} {t('cc_hulls')}
       </button>
 
       {clusterArray.length > 0 && (
@@ -76,8 +82,8 @@ export function ClusterControls({ strategy, setStrategy, showHulls, setShowHulls
             fontFamily: T.mono, outline: 'none', cursor: 'pointer', marginLeft: 'auto'
           }}
         >
-          <option value="">-- Ver Todo o Grafo --</option>
-          {clusterArray.map(c => <option key={c.id} value={c.id}>Isolar: {c.label}</option>)}
+          <option value="">{t('cc_isolate_all')}</option>
+          {clusterArray.map(c => <option key={c.id} value={c.id}>{t('cc_isolate')} {c.label}</option>)}
         </select>
       )}
     </div>
