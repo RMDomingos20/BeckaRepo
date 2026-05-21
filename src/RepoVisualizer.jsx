@@ -4,6 +4,9 @@ import { getFileType, buildFolderTree } from "./utils/helpers";
 import { extractImports, buildIdIndex } from "./utils/parser"; 
 import { useResizable } from "./hooks/useResizable";
 
+import { ClusterControls } from "./components/ClusteringControls";
+import { clusterGraph, buildNodeClusterMap, CLUSTER_STRATEGY } from "./utils/clustering";
+
 import { TreeNode } from "./components/TreeNode";
 import { FilePanel } from "./components/FilePanel";
 import { CanvasGlobalGraph } from "./components/CanvasGlobalGraph";
@@ -11,6 +14,7 @@ import { CanvasGlobalGraph } from "./components/CanvasGlobalGraph";
 import { useTags } from "./hooks/useTags";
 import { useLayout } from "./hooks/useLayout";
 import { ConnectionFilter } from "./components/ConnectionFilter";
+import { ManualModal } from "./components/ManualModal";
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 // Identidade BeckaRepo: preto profundo + rosa/lilás da logo
@@ -456,14 +460,21 @@ export default function RepoVisualizer() {
   const [termInput, setTermInput] = useState('');
   const [termQuery, setTermQuery] = useState('');
 
+  const [activeEdgeTypes, setActiveEdgeTypes] = useState(new Set());
+  const [clusterStrategy, setClusterStrategy] = useState(CLUSTER_STRATEGY.FOLDER);
+  const [clusterDepth, setClusterDepth] = useState(1);
+  const [showHulls, setShowHulls] = useState(true);
+  const [isolatedCluster, setIsolatedCluster] = useState(null);
+
   const [stats, setStats] = useState({files:0, code:0, edges:0, connected:0, skippedDirs:[]});
   const [repoName, setRepoName] = useState('');
 
   const { tagsData, addTag, removeTag, setNote } = useTags(repoName);
   const { showTree, showDetail, toggleTree, toggleDetail } = useLayout();
-  const [activeEdgeTypes, setActiveEdgeTypes] = useState(new Set());
   
   const inputRef = useRef(null);
+
+  const [showManual, setShowManual] = useState(false);
 
   const [treeW, treeHandle] = useResizable(260, 140, 600, false);
   const [detailW, detailHandle] = useResizable(380, 200, 700, true);
@@ -696,10 +707,32 @@ export default function RepoVisualizer() {
     setStats({files:0,code:0,edges:0,connected:0,skipped:0,skippedDirs:[]}); 
   };
 
-  const displayGraph = useMemo(() => {
+  const baseDisplayGraph = useMemo(() => {
     if (!graph) return null;
     return { ...graph, edges: graph.edges.filter(e => activeEdgeTypes.has(e.type)) };
   }, [graph, activeEdgeTypes]);
+
+  const { clusters, nodeClusterMap } = useMemo(() => {
+    if (!baseDisplayGraph) return { clusters: new Map(), nodeClusterMap: new Map() };
+    const cl = clusterGraph(baseDisplayGraph.nodes, baseDisplayGraph.edges, clusterStrategy, clusterDepth);
+    return { clusters: cl, nodeClusterMap: buildNodeClusterMap(cl) };
+  }, [baseDisplayGraph, clusterStrategy, clusterDepth]);
+
+  const displayGraph = useMemo(() => {
+    if (!baseDisplayGraph) return null;
+    if (!isolatedCluster || !clusters.has(isolatedCluster)) return baseDisplayGraph;
+
+    // Filtra o grafo para mostrar apenas o cluster isolado
+    const clusterInfo = clusters.get(isolatedCluster);
+    const clusterNodeIds = new Set(clusterInfo.nodes.map(n => n.id));
+    const nodes = baseDisplayGraph.nodes.filter(n => clusterNodeIds.has(n.id));
+    const edges = baseDisplayGraph.edges.filter(e => {
+      const sId = typeof e.source === 'object' ? e.source.id : e.source;
+      const tId = typeof e.target === 'object' ? e.target.id : e.target;
+      return clusterNodeIds.has(sId) && clusterNodeIds.has(tId);
+    });
+    return { ...baseDisplayGraph, nodes, edges };
+  }, [baseDisplayGraph, isolatedCluster, clusters]);
 
   // ── FASE: DROP ──────────────────────────────────────────────────────────────
   if (phase === 'drop') return (
@@ -977,6 +1010,20 @@ export default function RepoVisualizer() {
           </svg>
           MAPA MD
         </button>
+        
+        <button 
+          className="br-btn" 
+          onClick={() => setShowManual(true)} 
+          title="Ver o Manual de Instruções"
+          style={{ borderColor: '#c084fc', color: '#c084fc' }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          GUIA
+        </button>
 
         {/* Trocar repo */}
         <button className="br-btn danger" onClick={reset} title="Fechar e escolher outra pasta">
@@ -994,9 +1041,17 @@ export default function RepoVisualizer() {
         </button>
       </div>
 
-      {/* ── BARRA DE FILTRO DE CONEXÕES ── */}
+      {/* ── BARRAS DE FILTRO E CLUSTER ── */}
       {graph && view === 'grafo global' && (
-        <ConnectionFilter graph={graph} activeTypes={activeEdgeTypes} setActiveTypes={setActiveEdgeTypes} />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <ConnectionFilter graph={graph} activeTypes={activeEdgeTypes} setActiveTypes={setActiveEdgeTypes} />
+          <ClusterControls 
+            strategy={clusterStrategy} setStrategy={setClusterStrategy}
+            showHulls={showHulls} setShowHulls={setShowHulls}
+            clusters={clusters} depth={clusterDepth} setDepth={setClusterDepth}
+            isolatedCluster={isolatedCluster} setIsolatedCluster={setIsolatedCluster}
+          />
+        </div>
       )}
 
       {/* ── LAYOUT PRINCIPAL (3 COLUNAS) ── */}
@@ -1130,6 +1185,7 @@ export default function RepoVisualizer() {
           </>
         )}
       </div>
+      {showManual && <ManualModal onClose={() => setShowManual(false)} />}
     </div>
   );
 }

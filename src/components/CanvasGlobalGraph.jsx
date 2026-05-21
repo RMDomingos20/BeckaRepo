@@ -1,7 +1,8 @@
+// src/components/CanvasGlobalGraph.jsx
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
-// UTILITÁRIO: Raio visual inteligente
+// ─── UTILITÁRIO: Raio visual inteligente ──────────────────────────────────────
 function nodeRadius(d, selId, isUltra, isTiny = false) {
   if (selId === d?.id) return isTiny ? 14 : 10;
   if (d?.isMatch) return isTiny ? 10 : 6;
@@ -9,10 +10,89 @@ function nodeRadius(d, selId, isUltra, isTiny = false) {
   return (isTiny ? 6 : 3) + Math.min(isTiny ? 6 : 4, (d?.weight || 0) * (isTiny ? 0.8 : 0.5));
 }
 
+// ─── UTILITÁRIO: Convex Hull com margem ──────────────────────────────────────
+// Expande cada ponto do hull radialmente a partir do centróide, criando
+// um "balão" suave ao redor do cluster.
+function expandedHull(points, margin = 28) {
+  if (points.length < 2) return null;
+  if (points.length === 2) {
+    // Hull degenerado: 2 pontos → retângulo orientado
+    const [a, b] = points;
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = -dy / len * margin, ny = dx / len * margin;
+    return [[a[0]+nx, a[1]+ny],[b[0]+nx, b[1]+ny],[b[0]-nx, b[1]-ny],[a[0]-nx, a[1]-ny]];
+  }
+  const hull = d3.polygonHull(points);
+  if (!hull) return null;
+
+  // Centróide do hull
+  const cx = hull.reduce((s, p) => s + p[0], 0) / hull.length;
+  const cy = hull.reduce((s, p) => s + p[1], 0) / hull.length;
+
+  return hull.map(([x, y]) => {
+    const dx = x - cx, dy = y - cy;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return [x + (dx / len) * margin, y + (dy / len) * margin];
+  });
+}
+
+// ─── Gera SVG path suave (catmull-rom) a partir de um polígono ────────────────
+function hullPath(polygon) {
+  if (!polygon || polygon.length < 3) return '';
+  const line = d3.line().x(d => d[0]).y(d => d[1]).curve(d3.curveCatmullRomClosed.alpha(0.5));
+  return line(polygon) || '';
+}
+
+// ─── Desenha hulls no canvas ──────────────────────────────────────────────────
+function drawClusterHulls(ctx, clusters, nodeById) {
+  if (!clusters || clusters.size === 0) return;
+
+  for (const [, info] of clusters) {
+    const pts = info.nodes
+      .map(n => nodeById.get(n.id))
+      .filter(n => n && n.x != null && n.y != null && !isNaN(n.x) && !isNaN(n.y))
+      .map(n => [n.x, n.y]);
+
+    if (pts.length < 2) continue;
+    const expanded = expandedHull(pts);
+    if (!expanded || expanded.length < 3) continue;
+
+    // Curva catmull-rom manual no canvas
+    ctx.beginPath();
+    const n = expanded.length;
+    for (let i = 0; i < n; i++) {
+      const p0 = expanded[(i - 1 + n) % n];
+      const p1 = expanded[i];
+      const p2 = expanded[(i + 1) % n];
+      const p3 = expanded[(i + 2) % n];
+
+      if (i === 0) ctx.moveTo(p1[0], p1[1]);
+
+      // Catmull-rom → bezier
+      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1]);
+    }
+    ctx.closePath();
+
+    const hex = info.color;
+    ctx.fillStyle = hex + '14';   // 8% opacidade — sutil
+    ctx.fill();
+    ctx.strokeStyle = hex + '55'; // 33% opacidade
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
 // ==========================================
 // 1. MOTOR SVG (< 800 NÓS)
 // ==========================================
-function SvgEngine({ graph, selectedFile, onSelect, isTermGraph }) {
+function SvgEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeClusterMap, showClusters }) {
   const svgRef = useRef(null);
   const onSelectRef = useRef(onSelect);
   const simRef = useRef(null);
@@ -67,11 +147,6 @@ function SvgEngine({ graph, selectedFile, onSelect, isTermGraph }) {
 
     const g = sv.append('g');
 
-    // ─── FIX: Zoom do SVG corrigido ──────────────────────────────────────────
-    // ANTES: zoom handler tinha variáveis do CanvasEngine (isUltra, dragNodeRef,
-    //        transformRef, isAnimating, drawFnRef) que não existem no SvgEngine.
-    //        Isso fazia o zoom não aplicar a transform no grupo <g>.
-    // AGORA: Padrão correto do D3 — zoom aplica diretamente no grupo SVG.
     const zoom = d3.zoom()
       .scaleExtent([isTiny ? 0.2 : 0.05, 10])
       .on('zoom', ev => { g.attr('transform', ev.transform); });
@@ -79,7 +154,6 @@ function SvgEngine({ graph, selectedFile, onSelect, isTermGraph }) {
     const initScale = isTiny ? 0.8 : Math.max(0.3, 0.95 - (connectedCount / 1500));
     sv.call(zoom).on('dblclick.zoom', null);
     sv.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(initScale).translate(-W / 2, -H / 2));
-    // ─────────────────────────────────────────────────────────────────────────
 
     const dynamicDistance = isTiny ? 85 : Math.max(20, Math.min(60, 15 + connectedCount * 0.05));
     const dynamicCharge = isTiny ? -200 : -Math.max(25, Math.min(100, 20 + connectedCount * 0.1));
@@ -91,6 +165,68 @@ function SvgEngine({ graph, selectedFile, onSelect, isTermGraph }) {
     sim.force('center', d3.forceCenter(W / 2, H / 2).strength(isTiny ? 0.05 : 0.08));
     sim.alphaDecay(0.04);
     simRef.current = sim;
+
+    // -- FORÇA GRAVITACIONAL DOS CLUSTERS --
+    // Atrai nós suavemente para o centro de seu grupo
+    const clustersRef = { current: clusters };
+    const nodeClusterMapRef = { current: nodeClusterMap };
+
+    sim.force('cluster', function(alpha) {
+      const cls = clustersRef.current;
+      const ncm = nodeClusterMapRef.current;
+      if (!showClusters || !cls || cls.size === 0) return;
+
+      // 1. Calcula o centro de massa (Baricentro) de cada cluster
+      const centroids = new Map();
+      for (const [id, info] of cls) {
+        let cx = 0, cy = 0, count = 0;
+        info.nodes.forEach(n => {
+          const node = nodeById.get(n.id);
+          if (node && node.x != null && !isNaN(node.x)) { cx += node.x; cy += node.y; count++; }
+        });
+        if (count > 0) centroids.set(id, { x: cx / count, y: cy / count });
+      }
+
+      // 2. Aplica força direcional em cada nó conectado
+      connectedNodes.forEach(n => {
+        const cId = ncm?.get(n.id);
+        if (cId && centroids.has(cId)) {
+          const cent = centroids.get(cId);
+          const strength = 0.04 * alpha; // Modulador da força física
+          n.vx -= (n.x - cent.x) * strength;
+          n.vy -= (n.y - cent.y) * strength;
+        }
+      });
+    });
+
+    // ── CAMADA DE HULLS (abaixo de tudo) ──────────────────────────────────────
+    const hullGroup = g.append('g').attr('class', 'hull-layer');
+
+    const updateHulls = () => {
+      if (!showClusters || !clusters || clusters.size === 0) return;
+      hullGroup.selectAll('.cluster-hull').remove();
+
+      for (const [, info] of clusters) {
+        const pts = info.nodes
+          .map(n => nodeById.get(n.id))
+          .filter(n => n && n.x != null && !isNaN(n.x))
+          .map(n => [n.x, n.y]);
+
+        if (pts.length < 2) continue;
+        const expanded = expandedHull(pts);
+        if (!expanded) continue;
+        const pathStr = hullPath(expanded);
+        if (!pathStr) continue;
+
+        hullGroup.append('path')
+          .attr('class', 'cluster-hull')
+          .attr('d', pathStr)
+          .attr('fill', info.color + '14')
+          .attr('stroke', info.color + '55')
+          .attr('stroke-width', 1)
+          .attr('stroke-dasharray', '4,4');
+      }
+    };
 
     const linkg = g.append('g').attr('class', 'links-layer');
     const nodeg = g.append('g').attr('class', 'nodes-layer');
@@ -135,14 +271,50 @@ function SvgEngine({ graph, selectedFile, onSelect, isTermGraph }) {
       .attr('font-family', 'monospace').attr('pointer-events', 'none')
       .attr('display', d => d.isMatch || isTiny ? 'block' : 'none');
 
+    // ── Labels de cluster (centroides) ────────────────────────────────────────
+    const clusterLabelGroup = g.append('g').attr('class', 'cluster-labels');
+
+    const updateClusterLabels = () => {
+      if (!showClusters || !clusters || clusters.size === 0) return;
+      clusterLabelGroup.selectAll('.cluster-label').remove();
+
+      for (const [, info] of clusters) {
+        const pts = info.nodes
+          .map(n => nodeById.get(n.id))
+          .filter(n => n && n.x != null && !isNaN(n.x));
+        if (pts.length < 1) continue;
+
+        const cx = pts.reduce((s, n) => s + n.x, 0) / pts.length;
+        const cy = pts.reduce((s, n) => s + n.y, 0) / pts.length;
+
+        // Encontra o ponto mais alto do hull para posicionar o label
+        const topY = Math.min(...pts.map(n => n.y)) - 36;
+
+        clusterLabelGroup.append('text')
+          .attr('class', 'cluster-label')
+          .attr('x', cx)
+          .attr('y', topY)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '9px')
+          .attr('font-family', 'monospace')
+          .attr('font-weight', '700')
+          .attr('fill', info.color + 'cc')
+          .attr('letter-spacing', '1px')
+          .attr('pointer-events', 'none')
+          .text(info.label.toUpperCase());
+      }
+    };
+
     sim.on('tick', () => {
       link.attr('x1', d => d.target.x).attr('y1', d => d.target.y)
           .attr('x2', d => d.source.x).attr('y2', d => d.source.y);
       node.attr('transform', d => `translate(${d.x || 0},${d.y || 0})`);
+      updateHulls();
+      updateClusterLabels();
     });
 
     return () => sim.stop();
-  }, [graph, isTermGraph, isTiny]);
+  }, [graph, isTermGraph, isTiny, clusters, showClusters]);
 
   // Efeito de seleção
   useEffect(() => {
@@ -199,7 +371,7 @@ function SvgEngine({ graph, selectedFile, onSelect, isTermGraph }) {
 // ==========================================
 // 2. MOTOR CANVAS (> 800 NÓS - Máxima Performance)
 // ==========================================
-function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
+function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph, clusters, nodeClusterMap, showClusters }) {
   const containerRef = useRef(null);
   const canvasRef    = useRef(null);
   const transformRef = useRef(d3.zoomIdentity);
@@ -207,22 +379,26 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
   const selRef       = useRef(selectedFile);
   const hoverRef     = useRef(null);
   const dragNodeRef  = useRef(null);
-
-  // ─── FIX: Sistema de dirty flag ──────────────────────────────────────────────
-  // PROBLEMA ANTERIOR:
-  //   O renderLoop parava quando a simulação terminava (isAnimating = false).
-  //   Depois disso, eventos de zoom/pan atualizavam transformRef mas nunca
-  //   chamavam draw() → canvas congelado, viewport travado.
-  //
-  // SOLUÇÃO:
-  //   O loop RAF agora roda SEMPRE. draw() só é chamada quando dirtyRef = true.
-  //   Qualquer interação (zoom, drag, hover, seleção) seta dirty = true.
-  //   Custo idle: ~0.01ms/frame (apenas um if + scheduleRAF). Negligível.
-  // ─────────────────────────────────────────────────────────────────────────────
-  const dirtyRef  = useRef(true);
-  const animIdRef = useRef(null);
+  const dirtyRef     = useRef(true);
+  const animIdRef    = useRef(null);
+  // Ref para clusters (evita re-criar o effect quando só muda strategy)
+  const clustersRef  = useRef(clusters);
+  const showClustersRef = useRef(showClusters);
 
   selRef.current = selectedFile;
+  clustersRef.current = clusters;
+  showClustersRef.current = showClusters;
+
+  // Quando clusters mudam, basta marcar dirty — sem reconstruir simulação
+  useEffect(() => {
+    clustersRef.current = clusters;
+    dirtyRef.current = true;
+  }, [clusters]);
+
+  useEffect(() => {
+    showClustersRef.current = showClusters;
+    dirtyRef.current = true;
+  }, [showClusters]);
 
   useEffect(() => {
     if (!graph || !containerRef.current || !canvasRef.current) return;
@@ -283,10 +459,7 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
       if (src && tgt) validEdges.push({ ...e, source: src, target: tgt });
     });
 
-    // ─── PERF: Array pré-computado para hit-test ──────────────────────────────
-    // Evita criar [...connectedNodes, ...isolatedNodes] a cada mousemove.
     const allNodes = [...connectedNodes, ...isolatedNodes];
-    // ─────────────────────────────────────────────────────────────────────────
 
     const sim = d3.forceSimulation(connectedNodes);
     const dynamicDistance = isUltra ? 10 : Math.max(15, Math.min(80, 12 + connectedCount * 0.04));
@@ -301,9 +474,46 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
     sim.alphaDecay(isUltra ? 0.1 : 0.04);
     simRef.current = sim;
 
-    // ─── FIX: Tick marca dirty (física atualizou → precisa redesenhar) ────────
     sim.on('tick', () => { dirtyRef.current = true; });
-    // ─────────────────────────────────────────────────────────────────────────
+
+    // ─── Função de desenho dos hulls via canvas ───────────────────────────────
+    const drawHulls = () => {
+      if (!showClustersRef.current) return;
+      const cls = clustersRef.current;
+      if (!cls || cls.size === 0) return;
+
+      ctx.save();
+      drawClusterHulls(ctx, cls, nodeById);
+      ctx.restore();
+    };
+
+    // ─── Labels de cluster no canvas ─────────────────────────────────────────
+    const drawClusterLabels = (t) => {
+      if (!showClustersRef.current) return;
+      const cls = clustersRef.current;
+      if (!cls || cls.size === 0) return;
+
+      for (const [, info] of cls) {
+        const pts = info.nodes
+          .map(n => nodeById.get(n.id))
+          .filter(n => n && n.x != null && !isNaN(n.x));
+        if (pts.length < 1) continue;
+
+        const cx = pts.reduce((s, n) => s + n.x, 0) / pts.length;
+        const topY = Math.min(...pts.map(n => n.y)) - 38;
+
+        // Só renderiza label em zoom razoável (evita poluição visual no ultra-zoom-out)
+        if (t.k < (isUltra ? 0.5 : 0.2)) continue;
+
+        const fontSize = Math.max(8, 9 / t.k);
+        ctx.font = `700 ${fontSize}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.letterSpacing = '1px';
+        ctx.fillStyle = info.color + 'cc';
+        ctx.fillText(info.label.toUpperCase(), cx, topY);
+      }
+    };
 
     const draw = () => {
       if (W === 0 || H === 0) return;
@@ -323,9 +533,11 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
         x >= vMinX - buffer && x <= vMaxX + buffer &&
         y >= vMinY - buffer && y <= vMaxY + buffer;
 
+      // ── 0. Hulls de cluster (fundo de tudo) ───────────────────────────────
+      drawHulls();
+
       ctx.globalAlpha = 1.0;
 
-      // Divide arestas em 3 camadas para ordenação correta
       const normalEdges = [];
       const matchEdges = [];
       const selEdges = [];
@@ -339,7 +551,6 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
         else normalEdges.push(e);
       });
 
-      // 1. Fundo: linhas normais (batch único para máxima performance)
       if (normalEdges.length > 0) {
         ctx.beginPath();
         normalEdges.forEach(e => { ctx.moveTo(e.source.x, e.source.y); ctx.lineTo(e.target.x, e.target.y); });
@@ -348,7 +559,6 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
         ctx.stroke();
       }
 
-      // 2. Meio: linhas de match da busca
       if (matchEdges.length > 0) {
         ctx.beginPath();
         matchEdges.forEach(e => { ctx.moveTo(e.source.x, e.source.y); ctx.lineTo(e.target.x, e.target.y); });
@@ -357,7 +567,6 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
         ctx.stroke();
       }
 
-      // 3. Topo: linhas do item selecionado
       if (selEdges.length > 0) {
         ctx.beginPath();
         selEdges.forEach(e => { ctx.moveTo(e.source.x, e.source.y); ctx.lineTo(e.target.x, e.target.y); });
@@ -410,14 +619,11 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
       renderNodes(connectedNodes);
       if (t.k > (isUltra ? 0.8 : 0.2)) renderNodes(isolatedNodes);
 
+      // ── Labels de cluster (topo de tudo) ─────────────────────────────────
+      drawClusterLabels(t);
+
       ctx.restore();
     };
-    let animationId;
-    // ---------------------------------------------------------
-    // RENDER LOOP COM DIRTY FLAG (Padrão atual do seu repositório)
-    // ---------------------------------------------------------
-    let isAnimating = true; 
-    sim.on('end', () => { isAnimating = false; }); 
 
     const renderLoop = () => {
       if (dirtyRef.current) {
@@ -426,24 +632,19 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
       }
       animIdRef.current = requestAnimationFrame(renderLoop);
     };
-    
-    // Inicia o loop
+
     dirtyRef.current = true;
     animIdRef.current = requestAnimationFrame(renderLoop);
 
-    // ---------------------------------------------------------
-    // EVENTOS D3 (Marcando dirtyRef como true ao invés de forçar draw)
-    // ---------------------------------------------------------
     const zoom = d3.zoom()
       .scaleExtent([isUltra ? 0.005 : 0.05, 10])
       .filter(ev => (!ev.button && ev.type !== 'mousedown') || dragNodeRef.current == null)
       .on('zoom', ev => {
         transformRef.current = ev.transform;
-        dirtyRef.current = true; // <-- BASTA MARCAR COMO SUJO AQUI
+        dirtyRef.current = true;
       });
 
     const zoomSel = d3.select(canvas).call(zoom).on('dblclick.zoom', null);
-    
     const initScale = isUltra ? 0.05 : Math.max(0.15, 0.9 - (connectedCount / 2500));
     zoomSel.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(initScale).translate(-W / 2, -H / 2));
 
@@ -454,9 +655,9 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
       for (const arr of arrays) {
         for (let i = arr.length - 1; i >= 0; i--) {
           const n = arr[i];
-          const r = nodeRadius(n, selRef.current?.id, isUltra) + 6; 
+          const r = nodeRadius(n, selRef.current?.id, isUltra) + 6;
           if (Math.abs(n.x - wx) < r && Math.abs(n.y - wy) < r) {
-             if ((n.x - wx)**2 + (n.y - wy)**2 <= r**2) return n;
+            if ((n.x - wx)**2 + (n.y - wy)**2 <= r**2) return n;
           }
         }
       }
@@ -472,12 +673,10 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
         return;
       }
       const found = getNodeAtMouse(ev.offsetX, ev.offsetY);
-      
-      // SÓ redesenha se o cursor realmente entrar ou sair de cima de uma bolinha
       if (hoverRef.current?.id !== found?.id) {
         hoverRef.current = found;
         canvas.style.cursor = found ? 'pointer' : 'default';
-        dirtyRef.current = true; // <-- BASTA MARCAR COMO SUJO AQUI
+        dirtyRef.current = true;
       }
     });
 
@@ -498,7 +697,7 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
         dragNodeRef.current = null;
         canvas.style.cursor = 'default';
         d3.select(canvas).call(zoom);
-        dirtyRef.current = true; // Atualiza a tela ao soltar o nó
+        dirtyRef.current = true;
       }
     });
 
@@ -512,24 +711,20 @@ function CanvasEngine({ graph, selectedFile, onSelect, isTermGraph }) {
     });
 
     d3.select(canvas).on('click.select', ev => {
-      if (ev.detail > 1) return; 
+      if (ev.detail > 1) return;
       onSelect(getNodeAtMouse(ev.offsetX, ev.offsetY) || null);
     });
 
     return () => {
-      cancelAnimationFrame(animIdRef.current); // Usa o ref correto para cancelar
+      cancelAnimationFrame(animIdRef.current);
       sim.stop();
       d3.select(canvas)
         .on('.zoom', null).on('.drag', null)
         .on('.hover', null).on('.select', null)
         .on('dblclick.unpin', null);
     };
-  }, [graph, isTermGraph]); // <-- FIM DO USE EFFECT
+  }, [graph, isTermGraph]);
 
-  // ─── FIX: Seleção marca dirty ─────────────────────────────────────────────
-  // Quando selectedFile muda (clique na árvore, no grafo etc), o canvas
-  // precisa redesenhar para refletir a nova seleção.
-  // selRef.current já é atualizado sincronicamente no topo do componente.
   useEffect(() => {
     dirtyRef.current = true;
   }, [selectedFile]);
