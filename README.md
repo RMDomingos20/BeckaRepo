@@ -1,236 +1,112 @@
-<div align="center">
+# BeckaRepo
 
-<img width="1536" height="1024" alt="Logo" src="https://github.com/user-attachments/assets/7a3c25ad-0479-436a-be93-ff7980eee14c" />
+[Manual ilustrado de uso](docs/MANUAL.md) · Também disponível no botão **Guia**, antes ou depois de abrir um projeto.
 
-### Repository Architecture Visualization & Dependency Mapping Engine
+Aplicativo desktop para explorar arquivos, dependências e referências de um repositório local.
 
-BeckaRepo transforms complex repositories into dynamic relational graphs, allowing developers and software architects to visually explore project structure, dependencies, hierarchy, and information flow in real time.
+**O aplicativo agora usa Rust e Tauri 2.** Rust executa a análise, leitura de arquivos, diálogos nativos e exportação. React e D3 continuam responsáveis pela interface. Electron e o motor JavaScript antigo foram removidos.
 
----
+## Rodar no terminal do VS Code
 
-![Electron](https://img.shields.io/badge/Desktop-Electron-2b2e3a?style=for-the-badge&logo=electron&logoColor=9feaf9)
-![React](https://img.shields.io/badge/Frontend-React_19-20232a?style=for-the-badge&logo=react&logoColor=61dafb)
-![Vite](https://img.shields.io/badge/Build_Tool-Vite-646cff?style=for-the-badge&logo=vite&logoColor=fff)
-![D3.js](https://img.shields.io/badge/Visualization-D3.js-f9a03c?style=for-the-badge&logo=d3.js&logoColor=fff)
-![NodeJS](https://img.shields.io/badge/Runtime-Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=fff)
+Pré-requisitos no Windows: Rust estável com toolchain MSVC, Visual Studio Build Tools com a carga **Desenvolvimento para desktop com C++** e Windows SDK, Node.js compatível com Vite 8 (20.19+ ou 22.12+) e Microsoft Edge WebView2 Runtime. Veja os [pré-requisitos oficiais do Tauri](https://v2.tauri.app/start/prerequisites/).
 
-</div>
+Na pasta raiz deste repositório:
 
----
-
-# Overview
-
-BeckaRepo is a desktop application focused on **repository architecture visualization**, **dependency analysis**, and **code relationship mapping**.
-
-Instead of manually navigating folders and tracing imports across hundreds of files, BeckaRepo generates an interactive graph representation of the repository structure, helping developers quickly understand:
-
-- Project hierarchy
-- File relationships
-- Dependency coupling
-- Architecture flow
-- Impact propagation
-- Legacy system structure
-
-The application was designed to simplify exploration of large and complex codebases through an intuitive and scalable visual interface.
-
----
-
-# System Architecture
-
-BeckaRepo follows a hybrid desktop architecture that separates interface rendering from repository analysis and system-level operations.
-
----
-
-## Desktop Layer  
-### `Electron Main Process`
-
-The desktop layer is built with **Electron**, providing:
-
-- Native desktop window management
-- Local filesystem access
-- OS-level API integration
-- Application lifecycle orchestration
-
-This layer acts as the bridge between the operating system and the visualization engine.
-
----
-
-## Interface Layer  
-### `React Renderer Process`
-
-The frontend is developed using **React 19** and powered by **Vite** for ultra-fast module loading and optimized rendering performance.
-
-The interface is responsible for:
-
-- Repository navigation
-- Dynamic graph interaction
-- State management
-- Search systems
-- Real-time visual updates
-
----
-
-## Graph Visualization Engine  
-### `D3.js Adaptive Renderer`
-
-At the core of BeckaRepo is an adaptive graph-rendering engine powered by **D3.js**.
-
-The renderer dynamically changes strategy depending on repository scale:
-
-| Rendering Mode | Usage |
-|---|---|
-| **SVG Mode** | Small and medium repositories with high interactivity |
-| **Canvas Mode** | Large-scale repositories with thousands of nodes and edges |
-
-This hybrid approach guarantees both visual fidelity and scalability.
-
----
-
-# Core Features
-
-## Dependency Parsing Engine
-
-BeckaRepo includes a custom-built parser capable of analyzing dependencies across multiple programming languages and ecosystems.
-
-### Supported Technologies
-
-- JavaScript
-- TypeScript
-- Python
-- Go
-- C#
-- Rust
-- Infrastructure files
-- Docker environments
-- CI/CD configurations
-
-The engine applies heuristic analysis to identify relationships between:
-
-- Source files
-- Assets
-- Modules
-- Configuration files
-- Build systems
-
----
-
-## Term Graph  
-### Semantic Repository Search
-
-Unlike traditional text-based search systems, BeckaRepo reconstructs a **focused dependency graph** based on the searched term.
-
-Instead of simply listing matching files, the engine isolates and visualizes only the entities directly connected to the searched context.
-
-This allows developers to:
-
-- Visualize impact propagation
-- Understand architectural relationships
-- Detect hidden dependencies
-- Analyze coupling between systems
-
----
-
-## Persistent Metadata System
-
-The application uses Electron-integrated browser storage to persist:
-
-- Repository notes
-- Custom tags
-- Architecture annotations
-- Developer metadata
-
-This enables architectural knowledge retention between sessions.
-
----
-
-# Performance Strategy
-
-BeckaRepo was designed with scalability as a core principle.
-
-### Optimization Techniques
-
-- Adaptive rendering pipeline
-- Dynamic graph pruning
-- Lazy visual updates
-- Hardware-accelerated canvas rendering
-- Incremental graph reconstruction
-
-These strategies allow the application to remain responsive even when processing extremely large repositories.
-
----
-
-# Development Setup
-
-## Clone the Repository
-
-```bash
-git clone <repository-url>
-```
-
----
-
-## Install Dependencies
-
-```bash
+```powershell
 npm install
-```
-
----
-
-## Start Development Environment
-
-```bash
 npm run dev
 ```
 
-This launches:
+O comando inicia Vite e abre a janela nativa Tauri. A primeira compilação Rust pode demorar. Encerre com `Ctrl+C` no terminal. Se acabou de instalar Rust/Build Tools, reinicie o terminal do VS Code.
 
-- Vite Development Server
-- Electron Desktop Process
+## Gerar o executável e instalador
 
----
-
-## Build Executable Installer
-
-```bash
-npm run build:exe
+```powershell
+npm run build
 ```
 
----
+- Executável: `target/release/beckarepo.exe`.
+- Instalador Windows: `target/release/bundle/nsis/`.
+- `npm run build:exe` também gera o instalador NSIS.
 
-# Vision
+O executável compilado funciona sem Node, npm ou Vite; usa o WebView2 do Windows. A primeira geração do instalador pode baixar as ferramentas de empacotamento.
 
-BeckaRepo was created to help developers better understand:
+## Usar somente Rust no terminal
 
-- Legacy systems
-- Enterprise architectures
-- Monorepositories
-- Large-scale applications
-- Deep dependency structures
+```powershell
+cargo run -p beckarepo-core --bin beckarepo-cli -- "D:\caminho\do\repositorio"
+```
 
-The project focuses on reducing onboarding friction and accelerating architectural comprehension through visual exploration.
+A CLI retorna snapshot JSON v2 com metadados de arquivos, grafo e estatísticas, sem conteúdo bruto. O modo `--json` mantém o contrato de análise v1. Não precisa de Node ou da interface.
 
----
+## Funcionalidades disponíveis
 
-# Future Goals
+- Seleção nativa de pasta e arrastar/soltar diretórios na janela.
+- Análise Rust em segundo plano com progresso, cancelamento e avisos de leitura.
+- Árvore de arquivos, busca por nome/caminho e busca textual paginada em Rust, com cobertura e cancelamento.
+- **Grafo global → Disposição** oferece Galáxia, Atlas e Livre em Canvas. Na Galáxia, o centro prioriza arquivos com mais vizinhos (cada entrada vale dois e cada saída vale um). O Atlas reserva a cada grupo uma área proporcional à quantidade de arquivos. Livre organiza os arquivos por forças. Clássico oferece SVG até 800 nós.
+- No grafo global, círculos vazados indicam arquivos isolados e losangos indicam pelo menos oito conexões no filtro atual. Na visão geral densa, passe o cursor sobre um grupo para ver a contagem ou clique para aproximar. Use **Pastas** para explorar diretórios e **Só do arquivo** para seguir as ligações da seleção. O **Guia** do aplicativo traz a legenda e os controles.
+- Filtros de relações, agrupamento por pasta, tipo, padrões de nome e conectividade.
+- Inspeção de código e prévia de imagens, áudio e vídeo.
+- Atualização incremental por botão, reaproveitando relações válidas, e transporte do grafo em lotes.
+- Tags e notas por arquivo, preferências em SQLite, importação de anotações JSON, backups e restauração.
+- Aba **Histórico Git** por arquivo: branch/HEAD, worktrees, commits, churn e frequência por janela, com cancelamento e cobertura. Requer Git no PATH.
+- Exportação de árvore e estatísticas em Markdown com diálogo de salvamento.
+- Interface em português e inglês, painéis redimensionáveis e paleta lilás. Em **Projeto → Configurações e dados**, altere a cor de destaque e o espaçamento. O Guia traz capturas ampliáveis de cada tarefa.
 
-- AI-assisted architecture analysis
-- Dependency risk detection
-- Repository clustering
-- Multi-repository visualization
-- Live architecture monitoring
-- Collaborative graph annotations
+A extração usa Tree-sitter para o piloto JS/TS/JSX/TSX/Rust, com intervalos de evidência e diagnósticos no painel do arquivo. Outras linguagens, YAML/RSI e relações Docker/CI mantêm heurísticas/regex. A resolução inclui configurações locais tsconfig/jsconfig (paths, baseUrl e extends), bindings com intervalos, módulos Rust inline e dependências Cargo locais por path, com aliases e herança explícita de workspace.dependencies. Ligações Cargo apontam para a entrada da biblioteca; não comprovam a exportação do símbolo. Associação completa de targets/workspaces, features, cfg e references TS continuam pendentes. Texto com 500 KiB ou mais não é carregado; o scanner processa um arquivo por vez e aceita até 100 mil arquivos. O limite agregado de 256 MiB permanece apenas no pedido JSON v1. Mídia para prévia tem limite de 128 MiB. Não há garantia de análise completa de uma linguagem ou de desempenho para determinado número de arquivos.
 
----
+A entrega mais recente de F5 resolve atributos `#[path]` literais em módulos Rust externos e inline, com destinos limitados ao inventário. A associação a targets Cargo preserva entradas personalizadas, fontes compartilhados e `src/bin`. O painel **Parsing e evidências** mostra targets, caminho lógico e regra de resolução. `crate`, `self` e `super` usam a árvore lógica; divergências entre targets geram diagnóstico. Features e cfg não são avaliados; cfg_attr e outros casos não suportados são diagnosticados. Uma alteração em fonte Rust pode reconstruir o índice completo de módulos. A rodada atual passou em 47 testes Rust e 5 JavaScript; cobertura, limites e pendências visuais estão no [relatório de F5](docs/validation/2026-10-29/RELATORIO_F5_PATH.md).
 
-<div align="center">
+F6 acrescenta **análises → Dependências externas**: declarações npm/Cargo/Maven, versões observadas em locks suportados, consumidores com evidência e consulta de impacto indireto. F7 acrescenta **Símbolos** no painel do arquivo: extração Rust sob demanda para JS/TS/Rust, complexidade por função, chamadas lexicais locais e grafo expansível. A primeira rodada passou em 63 testes Rust e 7 JavaScript; veja o [relatório F6/F7](docs/validation/2026-10-30/RELATORIO_F6_F7.md). Resolução global de símbolos e chamadas entre arquivos permanece pendente.
 
-# Credits
+No modo Livre, F8 calcula as posições do Canvas em um Worker, com transferência limitada de coordenadas e preservação dos nós fixados. A seção **Desempenho do grafo** separa cálculo, aplicação e desenho. O [relatório F8](docs/validation/2026-10-30/RELATORIO_F8_WORKER.md) registra 12 testes JavaScript e o ensaio sintético; não há garantia de FPS em repositórios grandes. LOD automático por zoom e medições completas na WebView continuam pendentes.
 
-Created with passion for software engineering, visualization systems, and developer experience.
+Nos grafos global/de busca acima de 800 arquivos, **Detalhamento → Pastas** permite expandir diretórios progressivamente e conferir conexões agregadas. O arquivo selecionado permanece individual. A lista **Navegar por pastas** oferece busca e recolhimento dos ramos. Veja o [relatório de 31/10](docs/validation/2026-10-31/RELATORIO_F8_PASTAS.md), com 17 testes JavaScript aprovados.
 
-### Message to Rebecka
+## Comandos adicionais
 
-> *"From one friend to another."*
+| Comando | Finalidade |
+| --- | --- |
+| `npm run dev:vite` | Somente interface no navegador; análise requer a janela Tauri. |
+| `npm run build:ui` | Compilar apenas os recursos da interface. |
+| `npm run check:rust` | Compilar/verificar os tipos do workspace Rust. |
+| `npm run test:core` | Testes de contrato do núcleo Rust. |
+| `npm run test:rust` | Testes do workspace Rust. |
+| `npm run lint` | Análise estática da interface. |
+| `cargo fmt --all` | Formatação dos fontes Rust. |
 
-</div>
+`Cargo.lock` e `package-lock.json` versionam as dependências. Em uma máquina nova, os downloads iniciais requerem rede. O lint possui dívida técnica herdada nos componentes React.
+
+## Roadmap preparado
+
+O briefing foi convertido em entregas para Rust/Tauri: segurança e memória, SQLite, Git, métricas, parsing sintático, dependências externas e zoom/LOD. A preparação já centraliza a política de arquivos e bloqueia nomes sensíveis conhecidos; a leitura sob demanda e a busca nativa de F1 já foram implementadas. A persistência SQLite de F2 e os controles de notas/backups também estão implementados. F3 inclui histórico por arquivo, associação persistente de worktrees, cache SQLite, hotspots, autoria opcional e coalteração. A visão **análises** também oferece F4: ciclos, graus, PageRank e betweenness calculados em Rust. F8 foi iniciada com zoom legível, agrupamento espacial e foco nas conexões do arquivo em grafos grandes. F3 agora inclui grafo de coalteração por página, comparação local e reassociação de pastas; F4 permite navegar por todos os componentes calculados. F5 iniciou o piloto sintático descrito abaixo. Resolução completa de configurações e LOD automático por zoom continuam planejados. Física do Canvas em Worker e detalhamento explícito por pastas já estão disponíveis; os relatórios recentes distinguem validação automatizada e visual.
+
+- [Etapa F1 implementada: funcionamento e limitações](docs/ETAPA_F1.md)
+- [Etapa F2: notas, banco local, importação e backups](docs/ETAPA_F2.md)
+- [Etapa F3: histórico Git, persistência, hotspots e coalteração](docs/ETAPA_F3.md)
+- [Etapa F4: ciclos e métricas estruturais em Rust](docs/ETAPA_F4.md)
+- [Etapa F5: piloto sintático, evidências e limites](docs/ETAPA_F5.md)
+- [Etapa F8: zoom, agrupamento e navegação em grafos densos](docs/ETAPA_F8.md)
+- [Roadmap priorizado e critérios de entrega](docs/ROADMAP.md)
+- [Arquitetura proposta e transição do contrato](docs/ARQUITETURA_ROADMAP.md)
+- [Política de arquivos e limites atuais](docs/POLITICA_DE_ARQUIVOS.md)
+
+## Arquitetura e próximos passos
+
+- [Arquitetura Rust, limites e pendências](docs/MIGRACAO_RUST.md)
+- [Diagnóstico histórico anterior à migração](docs/ANALISE_REPOSITORIO.md)
+- [Direção visual](docs/INTERFACE.md)
+- [Registro de compilação e limitações de validação](docs/VALIDACAO.md)
+
+Núcleo nativo em `crates/beckarepo-core/`; host desktop em `src-tauri/`; transporte em `src/services/`; interface em `src/components/`.
+
+Tags e notas são editadas em **Visão geral** e gravadas no banco do diretório de dados do app, fora da pasta analisada. **Configurações → Dados locais** mostra o caminho e os controles de backup/importação. IA, análise de risco, múltiplos repositórios, monitoramento ao vivo e anotações colaborativas continuam planejados. Clustering já está implementado. Metadados do antigo Electron exigem exportação para JSON e importação explícita, conforme o guia F2.
+
+## Créditos
+
+Criado com dedicação à engenharia de software, visualização e experiência de desenvolvimento.
+
+### Mensagem para Rebecka
+
+> "From one friend to another."

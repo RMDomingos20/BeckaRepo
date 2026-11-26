@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useTranslation } from './useTranslation';
 
 export function useLayout() {
-  const [showTree, setShowTree] = useState(true);
-  const [showDetail, setShowDetail] = useState(true);
-
-  const toggleTree = () => setShowTree(!showTree);
-  const toggleDetail = () => setShowDetail(!showDetail);
-
+  const { preferences, setPreference, preferencesReady } = useTranslation();
+  const showTree = preferences.showTree !== 'false';
+  const showDetail = preferences.showDetail !== 'false';
+  const toggleTree = () => { if (preferencesReady) setPreference('showTree', String(!showTree)); };
+  const toggleDetail = () => { if (preferencesReady) setPreference('showDetail', String(!showDetail)); };
   return { showTree, showDetail, toggleTree, toggleDetail };
 }

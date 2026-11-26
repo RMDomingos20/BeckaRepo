@@ -1,91 +1,26 @@
-import React from 'react';
 import { CLUSTER_STRATEGY } from '../utils/clustering';
 import { useTranslation } from '../hooks/useTranslation';
 
-const T = {
-  bg: '#030609', border: '#1a1f35', accent: '#c084fc',
-  accentDim: '#c084fc22', teal: '#00d4aa', textMid: '#8b7aa8',
-  textLow: '#3d3550', textHi: '#f0e6ff', mono: "'JetBrains Mono', monospace",
-};
+const strategies = [
+  [CLUSTER_STRATEGY.FOLDER, 'cc_folder'], [CLUSTER_STRATEGY.SEMANTIC, 'cc_semantic'],
+  [CLUSTER_STRATEGY.CONNECTIVITY, 'cc_modules'], [CLUSTER_STRATEGY.TYPE, 'cc_type'],
+];
 
 export function ClusterControls({ strategy, setStrategy, showHulls, setShowHulls, clusters, depth, setDepth, isolatedCluster, setIsolatedCluster }) {
-  // 1. Instancia o tradutor
-  const { t } = useTranslation(); 
-  
-  // 2. A variável que estava faltando!
-  const clusterArray = Array.from(clusters?.values() || []);
-
-  // 3. Estratégias (agora aqui dentro, com acesso ao `t`)
-  const STRATEGIES = [
-    { key: CLUSTER_STRATEGY.FOLDER,       label: t('cc_folder'),      icon: '📁' },
-    { key: CLUSTER_STRATEGY.SEMANTIC,     label: t('cc_semantic'),    icon: '🏗' },
-    { key: CLUSTER_STRATEGY.CONNECTIVITY, label: t('cc_modules'),     icon: '🔗' },
-    { key: CLUSTER_STRATEGY.TYPE,         label: t('cc_type'),        icon: '🏷' },
-  ];
-
-  return (
-    <div style={{
-      padding: '6px 14px', background: T.bg, borderBottom: `1px solid ${T.border}`,
-      display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
-    }}>
-      <span style={{ fontSize: '8.5px', color: T.textLow, textTransform: 'uppercase', letterSpacing: '1.5px', fontFamily: T.mono, marginRight: 4 }}>
-        {t('cc_title')}
-      </span>
-
-      {STRATEGIES.map(s => {
-        const isActive = strategy === s.key;
-        return (
-          <button
-            key={s.key} onClick={() => setStrategy(s.key)}
-            style={{
-              background: isActive ? T.accentDim : 'transparent',
-              border: `1px solid ${isActive ? T.accent : T.border}`,
-              color: isActive ? T.accent : T.textLow,
-              padding: '2px 9px', borderRadius: 10, fontSize: '8.5px',
-              cursor: 'pointer', fontFamily: T.mono, fontWeight: isActive ? 700 : 400,
-              display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.15s ease'
-            }}
-          >
-            {s.icon} {s.label}
-          </button>
-        );
-      })}
-
-      {strategy === CLUSTER_STRATEGY.FOLDER && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4 }}>
-          <button onClick={() => setDepth(Math.max(1, depth - 1))} style={{ background:'none', border:'none', color:T.textMid, cursor:'pointer' }}>-</button>
-          <span style={{ color:T.textHi, fontSize:'9px', fontFamily:T.mono }}>Lvl {depth}</span>
-          <button onClick={() => setDepth(depth + 1)} style={{ background:'none', border:'none', color:T.textMid, cursor:'pointer' }}>+</button>
-        </div>
-      )}
-
-      <div style={{ width: 1, height: 14, background: T.border, margin: '0 4px' }} />
-
-      <button
-        onClick={() => setShowHulls(!showHulls)}
-        style={{
-          background: showHulls ? '#00d4aa18' : 'transparent', border: `1px solid ${showHulls ? T.teal : T.border}`,
-          color: showHulls ? T.teal : T.textLow, padding: '2px 9px', borderRadius: 10, fontSize: '8.5px',
-          cursor: 'pointer', fontFamily: T.mono, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
-        }}
-      >
-        {showHulls ? '◉' : '○'} {t('cc_hulls')}
-      </button>
-
-      {clusterArray.length > 0 && (
-        <select
-          value={isolatedCluster || ''}
-          onChange={e => setIsolatedCluster(e.target.value || null)}
-          style={{
-            background: isolatedCluster ? '#f43f5e18' : T.bg, border: `1px solid ${isolatedCluster ? '#f43f5e' : T.border}`,
-            color: isolatedCluster ? '#f43f5e' : T.textMid, padding: '2px 6px', borderRadius: 5, fontSize: '9px',
-            fontFamily: T.mono, outline: 'none', cursor: 'pointer', marginLeft: 'auto'
-          }}
-        >
-          <option value="">{t('cc_isolate_all')}</option>
-          {clusterArray.map(c => <option key={c.id} value={c.id}>{t('cc_isolate')} {c.label}</option>)}
-        </select>
-      )}
-    </div>
-  );
+  const { t, lang } = useTranslation();
+  const pt = lang === 'pt';
+  return <div className="map-rail">
+    <label>{pt ? 'Agrupar por' : 'Group by'} <select className="br-input" value={strategy} onChange={e => setStrategy(e.target.value)}>
+      {strategies.map(([value,key])=><option key={value} value={value}>{t(key)}</option>)}</select></label>
+    {strategy === CLUSTER_STRATEGY.FOLDER && <>
+      <button className="br-btn" aria-label={pt ? 'Reduzir profundidade' : 'Decrease depth'} disabled={depth <= 1} onClick={() => setDepth(depth - 1)}>−</button>
+      <span>{pt ? 'Nível' : 'Level'} {depth}</span>
+      <button className="br-btn" aria-label={pt ? 'Aumentar profundidade' : 'Increase depth'} onClick={() => setDepth(depth + 1)}>+</button>
+    </>}
+    <label><input type="checkbox" checked={showHulls} onChange={e => setShowHulls(e.target.checked)}/> {t('cc_hulls')}</label>
+    {clusters.size > 0 && <label>{pt ? 'Isolar grupo' : 'Isolate group'} <select className="br-input" value={isolatedCluster || ''} onChange={e=>setIsolatedCluster(e.target.value || null)}>
+      <option value="">{pt ? 'Todos os grupos' : 'All groups'}</option>
+      {[...clusters.values()].map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+    </select></label>}
+  </div>;
 }

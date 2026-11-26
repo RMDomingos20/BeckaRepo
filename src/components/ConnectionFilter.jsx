@@ -1,35 +1,26 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 
-const T = {
-  bg:       '#030609',
-  border:   '#1a1f35',
-  accent:   '#c084fc',
-  accentDim: '#c084fc22',
-  textMid:  '#8b7aa8',
-  textLow:  '#3d3550',
-  textHi:   '#f0e6ff',
-  mono:     "'JetBrains Mono', monospace",
-};
+import { theme as T } from '../styles/theme.js';
 
 // Mapa de cores por tipo de conexão para distinguir visualmente
 const TYPE_COLORS = {
-  import:      '#c084fc',
-  require:     '#a855f7',
-  're-export': '#e879f9',
-  sibling:     '#38bdf8',
-  docker:      '#22d3ee',
-  'ci-ref':    '#34d399',
-  reference:   '#64748b',
-  include:     '#f59e0b',
-  'rsi-ref':   '#f97316',
-  'rsi-state': '#fb923c',
-  'sprite-ref':'#fbbf24',
-  'prototype-parent': '#e2e8f0',
+  import:      '#a4b8c4',
+  require:     '#ab9db9',
+  're-export': '#c1d0d8',
+  sibling:     '#8eb1c5',
+  docker:      '#8db5bd',
+  'ci-ref':    '#8db2a0',
+  reference:   '#98a3ad',
+  include:     '#c2ac7e',
+  'rsi-ref':   '#bd9679',
+  'rsi-state': '#c4a084',
+  'sprite-ref':'#c2b386',
+  'prototype-parent': '#e5e7e9',
 };
 
 function getTypeColor(type) {
-  return TYPE_COLORS[type] || '#8b7aa8';
+  return TYPE_COLORS[type] || '#b1b8bf';
 }
 
 export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
@@ -70,11 +61,11 @@ export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
     }}>
       {/* Label Principal */}
       <span style={{
-        fontSize: '8.5px',
+        fontSize: 11,
         color: T.textLow,
         textTransform: 'uppercase',
         letterSpacing: '1.5px',
-        fontFamily: T.mono,
+        fontFamily: T.ui,
         marginRight: 6,
         flexShrink: 0,
       }}>
@@ -83,23 +74,23 @@ export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
 
       {/* Toggle All */}
       <button
-        onClick={toggleAll}
+        aria-pressed={allActive} onClick={toggleAll}
         style={{
-          background: allActive ? '#c084fc18' : 'transparent',
+          background: allActive ? '#a4b8c418' : 'transparent',
           border: `1px solid ${allActive ? T.accent : T.border}`,
           color: allActive ? T.accent : T.textLow,
           padding: '2px 9px',
           borderRadius: 10,
-          fontSize: '8.5px',
+          fontSize: 11,
           cursor: 'pointer',
-          fontFamily: T.mono,
+          fontFamily: T.ui,
           fontWeight: 700,
           letterSpacing: '0.5px',
           transition: 'all 0.15s ease',
           flexShrink: 0,
         }}
       >
-        {allActive ? `${t('cf_all')} ✦` : t('cf_all')}
+        {t('cf_all')}
       </button>
 
       <div style={{width:1, height:14, background:T.border, flexShrink:0}} />
@@ -111,16 +102,16 @@ export function ConnectionFilter({ graph, activeTypes, setActiveTypes }) {
         return (
           <button
             key={type}
-            onClick={() => toggleType(type)}
+            aria-pressed={isActive} onClick={() => toggleType(type)}
             style={{
               background: isActive ? color + '18' : 'transparent',
               border: `1px solid ${isActive ? color : T.border}`,
               color: isActive ? color : T.textLow,
               padding: '2px 9px',
               borderRadius: 10,
-              fontSize: '8.5px',
+              fontSize: 11,
               cursor: 'pointer',
-              fontFamily: T.mono,
+              fontFamily: T.ui,
               fontWeight: isActive ? 700 : 400,
               letterSpacing: '0.3px',
               transition: 'all 0.15s ease',

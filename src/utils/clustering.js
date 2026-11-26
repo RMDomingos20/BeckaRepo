@@ -7,15 +7,15 @@ export const CLUSTER_STRATEGY = {
 };
 
 const CLUSTER_PALETTE = [
-  '#c084fc', '#00d4aa', '#f59e0b', '#38bdf8', '#f43f5e', '#4ade80',
-  '#fb923c', '#818cf8', '#e879f9', '#34d399', '#fbbf24', '#60a5fa',
-  '#f87171', '#a78bfa', '#2dd4bf', '#d946ef',
+  '#9dd1b7', '#e3ab87', '#93bad5', '#dabf78', '#b2a0d0', '#76bdb5',
+  '#c4a084', '#a3abc5', '#c1d0d8', '#8db2a0', '#c2b386', '#9db5c7',
+  '#c39b98', '#ab9db9', '#90b6ae', '#b19eb2',
 ];
 
 const TYPE_COLORS = {
-  script: '#f59e0b', markup: '#f87171', style: '#f472b6',
-  data: '#fbbf24', config: '#a3e635', asset: '#34d399',
-  media: '#fb7185', other: '#6b7280',
+  script: '#c2ac7e', markup: '#c39b98', style: '#b59fae',
+  data: '#c2b386', config: '#b2ba95', asset: '#8db2a0',
+  media: '#c19ba3', other: '#6b7280',
 };
 
 function pickColor(index) {
@@ -28,7 +28,7 @@ function clusterByFolder(nodes, depth = 1) {
   for (const node of nodes) {
     const parts = node.path.split('/');
     // Ignora o root (parts[0]) a menos que seja raiz pura
-    const labelParts = parts.length > 1 ? parts.slice(1, 1 + depth) : ['(raiz)'];
+    const labelParts = parts.length > 1 ? parts.slice(0, Math.min(depth, parts.length - 1)) : ['(raiz)'];
     const label = labelParts.length > 0 ? labelParts.join('/') : '(raiz)';
     
     if (!groups.has(label)) groups.set(label, []);
@@ -159,7 +159,7 @@ function clusterByConnectivity(nodes, edges) {
       const folderFreq = new Map();
       clusterNodes.forEach(n => {
         const p = n.path.split('/');
-        const folder = p.length > 2 ? p[1] : p[0];
+        const folder = p.length > 1 ? p[0] : '(raiz)';
         folderFreq.set(folder, (folderFreq.get(folder) || 0) + 1);
       });
       const dominant = [...folderFreq.entries()].sort((a,b) => b[1]-a[1])[0][0];

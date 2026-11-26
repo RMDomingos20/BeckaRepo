@@ -1,0 +1,21 @@
+[package]
+name = "beckarepo"
+version = "1.1.0"
+edition = "2021"
+default-run = "beckarepo"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+beckarepo-core = { path = "../crates/beckarepo-core" }
+tauri = { version = "2", features = [] }
+rfd = "0.16"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.38", features = ["bundled", "backup"] }
+sha2 = "0.10"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

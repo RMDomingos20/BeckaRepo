@@ -1,61 +1,49 @@
-// src/components/SettingsModal.jsx
-import React from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { DataSettings } from './DataSettings.jsx';
 import { useTranslation } from '../hooks/useTranslation';
+import { accents, validAccent } from '../styles/theme.js';
 
-const T = {
-  bg: '#050810', bgDeep: '#020408', border: '#1a1f35',
-  accent: '#c084fc', textHi: '#f0e6ff', textMid: '#8b7aa8', mono: "'JetBrains Mono', monospace",
-};
-
-export function SettingsModal({ onClose }) {
-  const { lang, setLang, t } = useTranslation();
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999, background: '#020408ee', backdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.mono, animation: 'fadeIn 0.2s ease-out'
-    }}>
-      <div style={{
-        width: 400, background: T.bg, border: `1px solid ${T.accent}55`, borderRadius: 12,
-        display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: `0 0 80px ${T.accent}1a`
-      }}>
-        <div style={{ padding: '16px 24px', borderBottom: `1px solid ${T.border}`, background: T.bgDeep, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ color: T.textHi, fontSize: 14, fontWeight: 800, letterSpacing: '1px' }}>⚙️ {t('cfg_title')}</span>
-        </div>
-
-        <div style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-          
-          {/* Opção de Idioma */}
-          <div>
-            <div style={{ color: T.textMid, fontSize: 10, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>
-              {t('cfg_lang')}
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button onClick={() => setLang('pt')} style={{
-                flex: 1, padding: '10px', borderRadius: '6px', background: lang === 'pt' ? `${T.accent}22` : 'transparent',
-                border: `1px solid ${lang === 'pt' ? T.accent : T.border}`, color: lang === 'pt' ? T.accent : T.textMid,
-                cursor: 'pointer', fontFamily: T.mono, fontWeight: lang === 'pt' ? 700 : 400, transition: 'all 0.2s'
-              }}>🇧🇷 Português</button>
-              
-              <button onClick={() => setLang('en')} style={{
-                flex: 1, padding: '10px', borderRadius: '6px', background: lang === 'en' ? `${T.accent}22` : 'transparent',
-                border: `1px solid ${lang === 'en' ? T.accent : T.border}`, color: lang === 'en' ? T.accent : T.textMid,
-                cursor: 'pointer', fontFamily: T.mono, fontWeight: lang === 'en' ? 700 : 400, transition: 'all 0.2s'
-              }}>🇺🇸 English</button>
-            </div>
-          </div>
-
-        </div>
-
-        <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{
-            background: T.textHi, color: '#000', border: 'none', padding: '6px 16px', borderRadius: '4px',
-            fontFamily: T.mono, fontWeight: 800, cursor: 'pointer', fontSize: 10, letterSpacing: '1px'
-          }}>
-            {t('cfg_close')}
-          </button>
-        </div>
-      </div>
+export function SettingsModal({ onClose, onRestored = () => {}, hasUnsaved = false, snapshotId, onImported }) {
+  const { lang, setLang, t, density, preferences, setPreference, preferencesReady, preferencesError } = useTranslation();
+  const pt = lang === 'pt';
+  const dialog = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const accent = validAccent(preferences.accent) ? preferences.accent.toLowerCase() : accents.lilac;
+  useEffect(() => {
+    const el = dialog.current;
+    el.showModal();
+    return () => el.close();
+  }, []);
+  return <dialog ref={dialog} className="settings-dialog" aria-labelledby="settings-title"
+    onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}>
+    <header className="guide-header"><h2 id="settings-title">{t('cfg_title')}</h2>
+      <button className="br-btn" disabled={busy} onClick={onClose}>{pt ? 'Fechar' : 'Close'}</button></header>
+    <div className="settings-body">
+      <fieldset disabled={!preferencesReady || busy}><legend>{pt ? 'Aparência' : 'Appearance'}</legend>
+        <div className="setting-label">{pt ? 'Cor de destaque' : 'Accent color'}</div>
+        <div className="swatches">{Object.entries(accents).map(([key, value], i) =>
+          <button key={key} className="br-btn" aria-pressed={accent === value} onClick={() => setPreference('accent', value)}>
+            <i style={{ background: value }}/>{(pt ? ['Lilás', 'Azul', 'Sálvia'] : ['Lilac', 'Blue', 'Sage'])[i]}</button>)}</div>
+        <label className="setting-row">{pt ? 'Cor personalizada' : 'Custom color'}
+          <input type="color" value={accent} onChange={event => setPreference('accent', event.target.value)}/></label>
+        <label className="setting-row">{pt ? 'Espaçamento' : 'Spacing'}
+          <select className="br-input" value={density} onChange={event => setPreference('density', event.target.value)}>
+            <option value="comfortable">{pt ? 'Confortável' : 'Comfortable'}</option>
+            <option value="compact">{pt ? 'Compacto' : 'Compact'}</option>
+          </select></label>
+        <button className="settings-reset" disabled={accent === accents.lilac && density === 'comfortable'} onClick={() => {
+          setPreference('accent', accents.lilac);
+          setPreference('density', 'comfortable');
+        }}>{pt ? 'Restaurar aparência original' : 'Reset appearance'}</button>
+      </fieldset>
+      <label className="setting-row">{t('cfg_lang')}
+        <select className="br-input" value={lang} disabled={!preferencesReady || busy} onChange={event => setLang(event.target.value)}>
+          <option value="pt">Português</option><option value="en">English</option>
+        </select></label>
+      {preferencesError && <p role="alert">{t('data_error')}: {preferencesError}</p>}
+      <details className="settings-data"><summary>{t('data_title')}</summary>
+        <DataSettings hasUnsaved={hasUnsaved} onRestored={onRestored} onBusy={setBusy} snapshotId={snapshotId} onImported={onImported}/>
+      </details>
     </div>
-  );
+  </dialog>;
 }

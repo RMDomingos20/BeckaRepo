@@ -1,0 +1,416 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "src/main.ts",
+      "name": "main.ts",
+      "path": "src/main.ts",
+      "size": 141,
+      "weight": 8
+    },
+    {
+      "id": "src/model.ts",
+      "name": "model.ts",
+      "path": "src/model.ts",
+      "size": 21,
+      "weight": 2
+    },
+    {
+      "id": "src/style.css",
+      "name": "style.css",
+      "path": "src/style.css",
+      "size": 21,
+      "weight": 6
+    },
+    {
+      "id": "src/base.css",
+      "name": "base.css",
+      "path": "src/base.css",
+      "size": 0,
+      "weight": 2
+    },
+    {
+      "id": "src/data.json",
+      "name": "data.json",
+      "path": "src/data.json",
+      "size": 2,
+      "weight": 2
+    },
+    {
+      "id": "assets/react.svg",
+      "name": "react.svg",
+      "path": "assets/react.svg",
+      "size": 6,
+      "weight": 0
+    },
+    {
+      "id": "index.html",
+      "name": "index.html",
+      "path": "index.html",
+      "size": 63,
+      "weight": 4
+    },
+    {
+      "id": "python/main.py",
+      "name": "main.py",
+      "path": "python/main.py",
+      "size": 40,
+      "weight": 1
+    },
+    {
+      "id": "python/util.py",
+      "name": "util.py",
+      "path": "python/util.py",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": "native/main.cpp",
+      "name": "main.cpp",
+      "path": "native/main.cpp",
+      "size": 17,
+      "weight": 2
+    },
+    {
+      "id": "native/util.h",
+      "name": "util.h",
+      "path": "native/util.h",
+      "size": 0,
+      "weight": 2
+    },
+    {
+      "id": "app/Main.cs",
+      "name": "Main.cs",
+      "path": "app/Main.cs",
+      "size": 16,
+      "weight": 1
+    },
+    {
+      "id": "app/Model.cs",
+      "name": "Model.cs",
+      "path": "app/Model.cs",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": "go/main.go",
+      "name": "main.go",
+      "path": "go/main.go",
+      "size": 17,
+      "weight": 1
+    },
+    {
+      "id": "go/helper.go",
+      "name": "helper.go",
+      "path": "go/helper.go",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": "rust/main.rs",
+      "name": "main.rs",
+      "path": "rust/main.rs",
+      "size": 11,
+      "weight": 1
+    },
+    {
+      "id": "rust/helper.rs",
+      "name": "helper.rs",
+      "path": "rust/helper.rs",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": "thing.js",
+      "name": "thing.js",
+      "path": "thing.js",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": "thing.test.js",
+      "name": "thing.test.js",
+      "path": "thing.test.js",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": ".github/workflows/ci.yml",
+      "name": "ci.yml",
+      "path": ".github/workflows/ci.yml",
+      "size": 0,
+      "weight": 2
+    },
+    {
+      "id": "package.json",
+      "name": "package.json",
+      "path": "package.json",
+      "size": 2,
+      "weight": 1
+    },
+    {
+      "id": "Cargo.toml",
+      "name": "Cargo.toml",
+      "path": "Cargo.toml",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": "Dockerfile",
+      "name": "Dockerfile",
+      "path": "Dockerfile",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": "compose.yaml",
+      "name": "compose.yaml",
+      "path": "compose.yaml",
+      "size": 0,
+      "weight": 1
+    },
+    {
+      "id": "Resources/base.yml",
+      "name": "base.yml",
+      "path": "Resources/base.yml",
+      "size": 16,
+      "weight": 1
+    },
+    {
+      "id": "Resources/child.yml",
+      "name": "child.yml",
+      "path": "Resources/child.yml",
+      "size": 66,
+      "weight": 3
+    },
+    {
+      "id": "Resources/Textures/Mobs/Joe/base.rsi/meta.json",
+      "name": "meta.json",
+      "path": "Resources/Textures/Mobs/Joe/base.rsi/meta.json",
+      "size": 28,
+      "weight": 3
+    },
+    {
+      "id": "Resources/Textures/Mobs/Joe/base.rsi/idle.png",
+      "name": "idle.png",
+      "path": "Resources/Textures/Mobs/Joe/base.rsi/idle.png",
+      "size": 0,
+      "weight": 1
+    }
+  ],
+  "edges": [
+    {
+      "id": "[\"src/main.ts\",\"src/model.ts\",\"import\"]",
+      "source": "src/main.ts",
+      "target": "src/model.ts",
+      "type": "import",
+      "detail": "./model",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/main.ts\",\"src/style.css\",\"import\"]",
+      "source": "src/main.ts",
+      "target": "src/style.css",
+      "type": "import",
+      "detail": "./style.css",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/main.ts\",\"src/data.json\",\"require\"]",
+      "source": "src/main.ts",
+      "target": "src/data.json",
+      "type": "require",
+      "detail": "./data.json",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/main.ts\",\"src/model.ts\",\"re-export\"]",
+      "source": "src/main.ts",
+      "target": "src/model.ts",
+      "type": "re-export",
+      "detail": "./model",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/main.ts\",\"src/style.css\",\"reference\"]",
+      "source": "src/main.ts",
+      "target": "src/style.css",
+      "type": "reference",
+      "detail": "./style.css",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/main.ts\",\"src/data.json\",\"reference\"]",
+      "source": "src/main.ts",
+      "target": "src/data.json",
+      "type": "reference",
+      "detail": "./data.json",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/style.css\",\"src/base.css\",\"import\"]",
+      "source": "src/style.css",
+      "target": "src/base.css",
+      "type": "import",
+      "detail": "@import './base.css'",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/style.css\",\"src/base.css\",\"reference\"]",
+      "source": "src/style.css",
+      "target": "src/base.css",
+      "type": "reference",
+      "detail": "./base.css",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"index.html\",\"src/main.ts\",\"script\"]",
+      "source": "index.html",
+      "target": "src/main.ts",
+      "type": "script",
+      "detail": "src/main.ts",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"index.html\",\"src/style.css\",\"stylesheet\"]",
+      "source": "index.html",
+      "target": "src/style.css",
+      "type": "stylesheet",
+      "detail": "src/style.css",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"index.html\",\"src/main.ts\",\"reference\"]",
+      "source": "index.html",
+      "target": "src/main.ts",
+      "type": "reference",
+      "detail": "src/main.ts",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"index.html\",\"src/style.css\",\"reference\"]",
+      "source": "index.html",
+      "target": "src/style.css",
+      "type": "reference",
+      "detail": "src/style.css",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"python/main.py\",\"python/util.py\",\"import\"]",
+      "source": "python/main.py",
+      "target": "python/util.py",
+      "type": "import",
+      "detail": "from .util import",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"native/main.cpp\",\"native/util.h\",\"include\"]",
+      "source": "native/main.cpp",
+      "target": "native/util.h",
+      "type": "include",
+      "detail": "util.h",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"native/main.cpp\",\"native/util.h\",\"reference\"]",
+      "source": "native/main.cpp",
+      "target": "native/util.h",
+      "type": "reference",
+      "detail": "util.h",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"app/Main.cs\",\"app/Model.cs\",\"import\"]",
+      "source": "app/Main.cs",
+      "target": "app/Model.cs",
+      "type": "import",
+      "detail": "app.Model",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"go/main.go\",\"go/helper.go\",\"import\"]",
+      "source": "go/main.go",
+      "target": "go/helper.go",
+      "type": "import",
+      "detail": "helper",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"rust/main.rs\",\"rust/helper.rs\",\"import\"]",
+      "source": "rust/main.rs",
+      "target": "rust/helper.rs",
+      "type": "import",
+      "detail": "helper",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"Resources/child.yml\",\"Resources/base.yml\",\"prototype-parent\"]",
+      "source": "Resources/child.yml",
+      "target": "Resources/base.yml",
+      "type": "prototype-parent",
+      "detail": "parent: BaseEntity",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"Resources/child.yml\",\"Resources/Textures/Mobs/Joe/base.rsi/meta.json\",\"sprite-ref\"]",
+      "source": "Resources/child.yml",
+      "target": "Resources/Textures/Mobs/Joe/base.rsi/meta.json",
+      "type": "sprite-ref",
+      "detail": "sprite: Mobs/Joe/base.rsi",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"Resources/child.yml\",\"Resources/Textures/Mobs/Joe/base.rsi/meta.json\",\"rsi-ref\"]",
+      "source": "Resources/child.yml",
+      "target": "Resources/Textures/Mobs/Joe/base.rsi/meta.json",
+      "type": "rsi-ref",
+      "detail": "Mobs/Joe/base.rsi",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"Resources/Textures/Mobs/Joe/base.rsi/meta.json\",\"Resources/Textures/Mobs/Joe/base.rsi/idle.png\",\"rsi-state\"]",
+      "source": "Resources/Textures/Mobs/Joe/base.rsi/meta.json",
+      "target": "Resources/Textures/Mobs/Joe/base.rsi/idle.png",
+      "type": "rsi-state",
+      "detail": "state: idle",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"thing.js\",\"thing.test.js\",\"sibling\"]",
+      "source": "thing.js",
+      "target": "thing.test.js",
+      "type": "sibling",
+      "detail": "mesmo módulo",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"Dockerfile\",\"compose.yaml\",\"docker\"]",
+      "source": "Dockerfile",
+      "target": "compose.yaml",
+      "type": "docker",
+      "detail": "Dockerfile ↔ Compose",
+      "bidirectional": false
+    },
+    {
+      "id": "[\".github/workflows/ci.yml\",\"package.json\",\"ci-ref\"]",
+      "source": ".github/workflows/ci.yml",
+      "target": "package.json",
+      "type": "ci-ref",
+      "detail": "CI → build root",
+      "bidirectional": false
+    },
+    {
+      "id": "[\".github/workflows/ci.yml\",\"Cargo.toml\",\"ci-ref\"]",
+      "source": ".github/workflows/ci.yml",
+      "target": "Cargo.toml",
+      "type": "ci-ref",
+      "detail": "CI → build root",
+      "bidirectional": false
+    }
+  ],
+  "stats": {
+    "files": 28,
+    "edges": 26,
+    "connected": 27
+  }
+}

@@ -1,5 +1,6 @@
-import React from 'react';
 import { FT, KW_MAP } from './constants';
+import { tokenizeCode } from './tokenizeCode.js';
+export { buildFolderTree, countTree } from './folderTree.js';
 
 export function getFileType(name) {
   const ext = name.split('.').pop()?.toLowerCase() || '';
@@ -16,69 +17,12 @@ export function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function normPath(p) {
-  const parts = p.split('/').filter(Boolean);
-  const r = [];
-  for (const s of parts) { if (s === '..') r.pop(); else if (s !== '.') r.push(s); }
-  return r.join('/');
-}
-
-export function buildFolderTree(files) {
-  const root = { name:'', children:{}, files:[], path:'' };
-  for (const f of files) {
-    const parts = f.path.split('/');
-    let node = root;
-    for (let i = 0; i < parts.length-1; i++) {
-      const p = parts[i];
-      if (!node.children[p])
-        node.children[p] = { name:p, children:{}, files:[], path:parts.slice(0,i+1).join('/') };
-      node = node.children[p];
-    }
-    node.files.push(f);
-  }
-  return root;
-}
-
-export function countTree(node) {
-  let n = node.files.length;
-  for (const c of Object.values(node.children)) n += countTree(c);
-  return n;
-}
-
 export function hlCode(code, ext, searchTerm = '') {
   if (!code) return null;
-  const kwRe = KW_MAP[ext];
-  const ph = [];
-  const mark = (type, text) => { const id = `\x00${ph.length}\x00`; ph.push({type,text}); return id; };
-  let s = code;
-  
-  // 1. Esconde comentários
-  s = s.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/|<!--[\s\S]*?-->|#[^\n]*)/g, m => mark('cm',m));
-  
-  // 2. Esconde strings (Isso engloba atributos HTML como href="...")
-  s = s.replace(/("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g, m => mark('st',m));
-  
-  // 3. Aplica palavras-chave de acordo com a linguagem
-  if (kwRe) { const re = new RegExp(kwRe.source,'g'); s = s.replace(re, m => mark('kw',m)); }
-  
-  // 4. FIX DOS NÚMEROS: O Regex não pode pegar números que estejam no meio dos nossos tokens \x00...
-  // Usamos Lookbehinds e Lookaheads para evitar o caractere Nulo \x00
-  s = s.replace(/(?<!\x00)\b(\d+\.?\d*)\b(?!\x00)/g, m => mark('nm',m));
-  
-  const TC = { kw:'#c084fc', st:'#86efac', cm:'#475569', nm:'#fb923c' };
-  
+  const TC = { kw:'#a4b8c4', st:'#a9c5ac', cm:'#89949d', nm:'#c4a084' };
   const escapedTerm = searchTerm ? escapeRegExp(searchTerm) : '';
-
-  return s.split(/(\x00\d+\x00)/).map((p,i) => {
-    let content = p;
-    let color = '#94a3b8';
-    
-    const hit = p.match(/^\x00(\d+)\x00$/);
-    if (hit) { 
-      const t = ph[+hit[1]]; 
-      content = t.text;
-      color = TC[t.type] || color;
-    }
+  return tokenizeCode(code, KW_MAP[ext]).map(({ text: content, type }, i) => {
+    const color = TC[type] || '#b1bac3';
     if (!content) return null;
 
     if (escapedTerm && content.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -87,7 +31,7 @@ export function hlCode(code, ext, searchTerm = '') {
         <span key={i} style={{color}}>
           {parts.map((part, idx) => 
             part.toLowerCase() === searchTerm.toLowerCase()
-            ? <span key={idx} style={{background:'#f43f5e', color:'#fff', borderRadius:2, padding:'0 2px', fontWeight:800}}>{part}</span>
+            ? <span key={idx} style={{background:'#cf9d83', color:'#fff', borderRadius:2, padding:'0 2px', fontWeight:800}}>{part}</span>
             : part
           )}
         </span>

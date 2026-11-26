@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    { "path": "src/main.js", "name": "main.js", "size": 30, "content": "import './utils.js';" },
+    { "path": "src/utils.js", "name": "utils.js", "size": 30, "content": "import './main.js';" },
+    { "path": "assets/logo.png", "name": "logo.png", "size": 12, "content": null }
+  ]
+}

@@ -1,34 +1,21 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { fmtBytes, hlCode } from '../utils/helpers';
+import { loadAsset, readFileContent } from '../services/analysisClient.js';
+import { ImagePreview } from './ImagePreview.jsx';
 import { MiniGraph } from './MiniGraph';
 import { useTranslation } from '../hooks/useTranslation';
 
-const T = {
-  bg:       '#050810',
-  bgDeep:   '#020408',
-  bgPanel:  '#03060d',
-  bgCard:   '#060b16',
-  border:   '#1a1f35',
-  accent:   '#c084fc',
-  accentDim: '#c084fc18',
-  teal:     '#00d4aa',
-  amber:    '#f59e0b',
-  purple:   '#a855f7',
-  textHi:   '#f0e6ff',
-  textMid:  '#8b7aa8',
-  textLow:  '#3d3550',
-  mono:     "'JetBrains Mono', monospace",
-};
+import { theme as T } from '../styles/theme.js';
+import { AnnotationEditor } from './AnnotationEditor.jsx';
+import { ParsingEvidence } from './ParsingEvidence.jsx';
+import { GitHistoryPanel } from './GitHistoryPanel.jsx';
+import { SymbolPanel } from './SymbolPanel.jsx';
 
-export function FilePanel({ file, graph, onSelect, termQuery }) {
-  const { t } = useTranslation();
+export function FilePanel({ file, graph, onSelect, termQuery, annotationEditor }) {
+  const { t, lang } = useTranslation();
   const [tab, setTab] = useState('overview');
   const [anchorId, setAnchorId] = useState(file?.id);
   const isInternalChange = useRef(false);
-
-  const [imgState, setImgState] = useState({ s: 1, x: 0, y: 0 });
-  const isDraggingImg = useRef(false);
-  const lastImgPos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!isInternalChange.current) {
@@ -38,33 +25,41 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
     isInternalChange.current = false;
   }, [file?.id]);
 
-  useEffect(() => {
-    setImgState({ s: 1, x: 0, y: 0 });
-  }, [file?.id, tab]);
-
   const handleInternalSelect = (node) => {
     isInternalChange.current = true;
     onSelect(node);
   };
 
-  const highlightedCode = useMemo(() => {
-    if (!file?.content || tab !== 'code') return null;
-    const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    return hlCode(file.content, ext, termQuery);
-  }, [file?.content, file?.name, tab, termQuery]);
-
-  const [assetUrl, setAssetUrl] = useState(null);
+  const [textResult, setTextResult] = useState(null);
+  const text = textResult?.file === file ? textResult : null;
   useEffect(() => {
-    if (tab === 'code' && file?.fileRef) {
-      const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      const isMedia = ['png','jpg','jpeg','gif','svg','webp','ico','mp3','mp4','wav','ogg'].includes(ext);
-      if (isMedia) {
-        const url = URL.createObjectURL(file.fileRef);
-        setAssetUrl(url);
-        return () => URL.revokeObjectURL(url);
-      }
-    }
-    setAssetUrl(null);
+    if (!file || tab !== 'code' || file.contentState === 'asset') return;
+    let disposed = false;
+    readFileContent(file).then(result => {
+      if (!disposed) setTextResult({ file, ...result });
+    }).catch(error => { if (!disposed) setTextResult({ file, error: String(error) }); });
+    return () => { disposed = true; };
+  }, [file, tab]);
+  const highlightedCode = useMemo(() => {
+    if (text?.status !== 'ready' || tab !== 'code') return null;
+    const ext = file?.name.split('.').pop()?.toLowerCase() || '';
+    return hlCode(text.content, ext, termQuery);
+  }, [text, file, tab, termQuery]);
+
+  const [asset, setAsset] = useState(null);
+  const assetUrl = asset && asset.file === file ? asset.url : null;
+  const assetError = asset && asset.file === file ? asset.error : null;
+  useEffect(() => {
+    const ext = file?.name.split('.').pop()?.toLowerCase();
+    if (tab !== 'code' || !file || !['png','jpg','jpeg','gif','svg','webp','ico','mp3','mp4','wav','ogg'].includes(ext)) return;
+    let disposed = false;
+    let url;
+    loadAsset(file).then(blob => {
+      if (disposed) return;
+      url = URL.createObjectURL(blob);
+      setAsset({ file, url });
+    }).catch(error => { if (!disposed) setAsset({ file, error: String(error) }); });
+    return () => { disposed = true; if (url) URL.revokeObjectURL(url); };
   }, [file, tab]);
 
   // ── EMPTY STATE ─────────────────────────────────────────────────────────────
@@ -74,19 +69,19 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
       alignItems:'center', justifyContent:'center',
       height:'100%', gap:14,
       color: T.textLow,
-      fontFamily: T.mono,
+      fontFamily: T.ui,
       padding: 20,
     }}>
       {/* Animated node graphic */}
       <svg width="48" height="48" viewBox="0 0 48 48" style={{opacity:0.15}}>
         {[[8,8],[8,40],[40,8],[40,40],[24,24]].map(([cx,cy],i)=>(
-          <circle key={i} cx={cx} cy={cy} r={4} fill="#c084fc" />
+          <circle key={i} cx={cx} cy={cy} r={4} fill="#a4b8c4" />
         ))}
         {[[8,8,40,8],[8,8,24,24],[40,8,24,24],[8,40,24,24],[40,40,24,24],[8,40,40,40]].map(([x1,y1,x2,y2],i)=>(
-          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#c084fc" strokeWidth="1.5" />
+          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#a4b8c4" strokeWidth="1.5" />
         ))}
       </svg>
-      <div style={{fontSize:10, letterSpacing:'2px', textTransform:'uppercase', textAlign:'center'}}>
+      <div style={{fontSize: 11, letterSpacing:'2px', textTransform:'uppercase', textAlign:'center'}}>
         Selecione um arquivo
       </div>
     </div>
@@ -99,9 +94,9 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   const isVideo = ['mp4'].includes(ext);
   const isAudio = ['mp3','wav','ogg'].includes(ext);
-  const isImage = !isVideo && !isAudio && assetUrl;
 
-  const TABS = ['overview', 'code', 'graph'];
+
+  const TABS = ['overview', 'code', 'graph', 'history', 'symbols'];
 
   return (
     <div style={{display:'flex', flexDirection:'column', height:'100%', overflow:'hidden'}}>
@@ -118,11 +113,11 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
             background: file.ft.c + '22',
             color: file.ft.c,
             borderRadius: 4,
-            fontSize: '8px',
+            fontSize: 11,
             fontWeight: 800,
             padding: '2px 7px',
             letterSpacing: '0.5px',
-            fontFamily: T.mono,
+            fontFamily: T.ui,
             flexShrink: 0,
           }}>
             {file.ft.l}
@@ -134,18 +129,18 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            fontFamily: T.mono,
+            fontFamily: T.ui,
           }} title={file.name}>
             {file.name}
           </span>
         </div>
         <div style={{
           color: T.textLow,
-          fontSize: 8.5,
+          fontSize: 11,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
-          fontFamily: T.mono,
+          fontFamily: T.ui,
           letterSpacing: '0.3px',
         }} title={file.path}>
           {file.path}
@@ -160,33 +155,37 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
         background: T.bgDeep,
       }}>
         {TABS.map(tabKey => (
-          <button key={tabKey} onClick={() => setTab(tabKey)} style={{
+          <button key={tabKey} onClick={() => { if (tabKey !== tab) { setAsset(null); setTextResult(null); setTab(tabKey); } }} style={{
             flex: 1,
             padding: '7px 0',
             background: 'none',
             border: 'none',
             borderBottom: tab === tabKey ? `2px solid ${T.accent}` : '2px solid transparent',
             color: tab === tabKey ? T.accent : T.textLow,
-            fontSize: '8px',
+            fontSize: 11,
             letterSpacing: '0.8px',
             cursor: 'pointer',
-            fontFamily: T.mono,
+            fontFamily: T.ui,
             textTransform: 'uppercase',
             fontWeight: tab === tabKey ? 700 : 400,
             transition: 'all 0.15s ease',
           }}>
-            {t(`fp_tab_${tabKey}`)}
+            {tabKey==='symbols' ? (lang==='pt'?'Símbolos':'Symbols') : t(`fp_tab_${tabKey}`)}
           </button>
         ))}
       </div>
 
       {/* ── TAB CONTENT ─────────────────────────────────────────────────────── */}
       <div style={{flex:1, overflow:'auto'}}>
+        {tab === 'history' && <GitHistoryPanel file={file} />}
+        {tab === 'symbols' && <SymbolPanel key={`${file.snapshotId}:${file.id}:${file.revision}`} file={file} />}
 
         {/* VISÃO GERAL */}
         {tab==='overview' && (
-          <div style={{padding:14, fontFamily: T.mono}}>
+          <div style={{padding:14, fontFamily: T.ui}}>
+            {annotationEditor && <details className="file-notes"><summary>{t('notes_title')}</summary><AnnotationEditor key={`${file.worktreeId}:${file.path}`} editor={annotationEditor} /></details>}
 
+            <ParsingEvidence key={`${file.snapshotId}:${file.id}`} file={file} edges={imports} />
             {/* Stats grid */}
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:6, marginBottom:16}}>
               {[
@@ -200,7 +199,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                   borderRadius: 6,
                   padding: '9px 10px',
                 }}>
-                  <div style={{color:T.textLow, fontSize:'7.5px', letterSpacing:'1px', marginBottom:4, textTransform:'uppercase'}}>
+                  <div style={{color:T.textLow, fontSize: 11, letterSpacing:'1px', marginBottom:4, textTransform:'uppercase'}}>
                     {l}
                   </div>
                   <div style={{color:c, fontSize:15, fontWeight:800}}>
@@ -219,7 +218,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                 borderRadius:6,
                 padding:'8px 10px',
               }}>
-                <div style={{fontSize:'7.5px', color:T.textLow, letterSpacing:'1px', marginBottom:6, textTransform:'uppercase'}}>
+                <div style={{fontSize: 11, color:T.textLow, letterSpacing:'1px', marginBottom:6, textTransform:'uppercase'}}>
                   {t('fp_coupling')}
                 </div>
                 <div style={{display:'flex', gap:4, alignItems:'center'}}>
@@ -231,11 +230,11 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                       borderRadius:2,
                     }} />
                   </div>
-                  <span style={{color:T.amber, fontSize:8, fontWeight:700, minWidth:20}}>{imports.length}</span>
-                  <span style={{color:T.textLow, fontSize:7}}>↑</span>
-                  <span style={{color:T.textLow, fontSize:7}}>↓</span>
-                  <span style={{color:T.accent, fontSize:8, fontWeight:700, minWidth:20, textAlign:'right'}}>{importedBy.length}</span>
-                  <div style={{flex:1, height:3, borderRadius:2, background:`${T.accent}33`, overflow:'hidden'}}>
+                  <span style={{color:T.amber, fontSize: 11, fontWeight:700, minWidth:20}}>{imports.length}</span>
+                  <span style={{color:T.textLow, fontSize: 11}}>↑</span>
+                  <span style={{color:T.textLow, fontSize: 11}}>↓</span>
+                  <span style={{color:T.accent, fontSize: 11, fontWeight:700, minWidth:20, textAlign:'right'}}>{importedBy.length}</span>
+                  <div style={{flex:1, height:3, borderRadius:2, background:T.accentDim, overflow:'hidden'}}>
                     <div style={{
                       height:'100%',
                       width:`${Math.min(100, importedBy.length * 8)}%`,
@@ -253,7 +252,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
               <div style={{marginBottom:14}}>
                 <div style={{
                   color: T.textLow,
-                  fontSize: '7.5px',
+                  fontSize: 11,
                   letterSpacing: '1.5px',
                   marginBottom: 7,
                   textTransform: 'uppercase',
@@ -278,14 +277,14 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                         borderRadius:5, cursor:'pointer',
                         transition:'all 0.15s ease',
                       }}
-                      onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.amber+'44'; e.currentTarget.style.background='#f59e0b08'; }}
+                      onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.amber+'44'; e.currentTarget.style.background='#c2ac7e08'; }}
                       onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.background=T.bgCard; }}
                     >
-                      <span style={{background:tn.ft.c+'22', color:tn.ft.c, borderRadius:3, fontSize:'6.5px', fontWeight:800, padding:'1px 5px', flexShrink:0}}>
+                      <span style={{background:tn.ft.c+'22', color:tn.ft.c, borderRadius:3, fontSize: 11, fontWeight:800, padding:'1px 5px', flexShrink:0}}>
                         {tn.ft.l}
                       </span>
                       <div style={{flex:1, minWidth:0}}>
-                        <div style={{fontSize:9.5, color:T.textHi, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight:600}}>
+                        <div style={{fontSize: 11, color:T.textHi, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight:600}}>
                           {tn.name}
                         </div>
                       </div>
@@ -303,7 +302,7 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
               <div style={{marginBottom:14}}>
                 <div style={{
                   color: T.textLow,
-                  fontSize: '7.5px',
+                  fontSize: 11,
                   letterSpacing: '1.5px',
                   marginBottom: 7,
                   textTransform: 'uppercase',
@@ -328,14 +327,14 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                         borderRadius:5, cursor:'pointer',
                         transition:'all 0.15s ease',
                       }}
-                      onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.accent+'44'; e.currentTarget.style.background='#c084fc08'; }}
+                      onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.borderHi; e.currentTarget.style.background=T.hover; }}
                       onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.background=T.bgCard; }}
                     >
-                      <span style={{background:sn.ft.c+'22', color:sn.ft.c, borderRadius:3, fontSize:'6.5px', fontWeight:800, padding:'1px 5px', flexShrink:0}}>
+                      <span style={{background:sn.ft.c+'22', color:sn.ft.c, borderRadius:3, fontSize: 11, fontWeight:800, padding:'1px 5px', flexShrink:0}}>
                         {sn.ft.l}
                       </span>
                       <div style={{flex:1, minWidth:0}}>
-                        <div style={{fontSize:9.5, color:T.textHi, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight:600}}>
+                        <div style={{fontSize: 11, color:T.textHi, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight:600}}>
                           {sn.name}
                         </div>
                       </div>
@@ -366,48 +365,16 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
                 ) : isAudio ? (
                   <audio src={assetUrl} controls style={{outline:'none'}} />
                 ) : (
-                  <div
-                    style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', cursor: isDraggingImg.current ? 'grabbing' : 'grab'}}
-                    onWheel={e => {
-                      setImgState(p => ({ ...p, s: Math.max(0.1, Math.min(10, p.s - e.deltaY * 0.005)) }));
-                    }}
-                    onMouseDown={e => { isDraggingImg.current = true; lastImgPos.current = { x: e.clientX, y: e.clientY }; }}
-                    onMouseMove={e => {
-                      if (isDraggingImg.current) {
-                        setImgState(p => ({ ...p, x: p.x + (e.clientX - lastImgPos.current.x), y: p.y + (e.clientY - lastImgPos.current.y) }));
-                        lastImgPos.current = { x: e.clientX, y: e.clientY };
-                      }
-                    }}
-                    onMouseUp={() => isDraggingImg.current = false}
-                    onMouseLeave={() => isDraggingImg.current = false}
-                  >
-                    <img
-                      src={assetUrl}
-                      alt={file.name}
-                      style={{
-                        transform: `translate(${imgState.x}px, ${imgState.y}px) scale(${imgState.s})`,
-                        transition: isDraggingImg.current ? 'none' : 'transform 0.1s ease-out',
-                        maxWidth:'100%', maxHeight:'100%', objectFit:'contain', borderRadius:4, pointerEvents:'none',
-                      }}
-                    />
-                    <div style={{
-                      position:'absolute', bottom:10, right:10,
-                      background:`${T.bgDeep}cc`, padding:'3px 8px',
-                      borderRadius:4, fontSize:8, color:T.textMid,
-                      pointerEvents:'none', border:`1px solid ${T.border}`,
-                    }}>
-                      {t('fp_img_hint')}
-                    </div>
-                  </div>
+                  <ImagePreview key={file.id} url={assetUrl} name={file.name} hint={t('fp_img_hint')} />
                 )}
               </div>
-            ) : highlightedCode ? (
+            ) : text?.status === 'ready' ? (
               <pre style={{
                 background: T.bgCard,
                 border: `1px solid ${T.border}`,
                 borderRadius: 7,
                 padding: '12px 14px',
-                fontSize: 10.5,
+                fontSize: 12,
                 fontFamily: T.mono,
                 lineHeight: 1.75,
                 overflowX: 'auto',
@@ -421,13 +388,13 @@ export function FilePanel({ file, graph, onSelect, termQuery }) {
             ) : (
               <div style={{
                 color: T.textLow,
-                fontSize: 10,
+                fontSize: 11,
                 padding: 20,
                 textAlign: 'center',
                 border: `1px dashed ${T.border}`,
                 borderRadius: 7,
               }}>
-                {t('fp_unavailable')}
+                {assetError || text?.error || (file.contentState === 'asset' ? t('fp_unavailable') : !text ? t('content_loading') : text.status === 'changed' ? t('content_changed') : text.status === 'too-large' ? t('content_large') : t('fp_unavailable'))}
               </div>
             )}
           </div>

@@ -1,0 +1,5 @@
+{
+  "productName": "BeckaRepo Validation",
+  "identifier": "com.beckarepo.validation",
+  "app": { "windows": [{ "label": "main", "title": "BeckaRepo Validation", "width": 1280, "height": 800, "minWidth": 800, "minHeight": 600, "backgroundColor": "#202326", "dragDropEnabled": true }] }
+}

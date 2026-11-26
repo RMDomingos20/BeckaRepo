@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "src/main.ts",
+      "name": "main.ts",
+      "size": 141,
+      "content": "import type { A } from './model';\nimport './style.css';\nconst x = require('./data.json');\nexport * from './model';\nimport React from 'react';"
+    },
+    {
+      "path": "src/model.ts",
+      "name": "model.ts",
+      "size": 21,
+      "content": "export interface A {}"
+    },
+    {
+      "path": "src/style.css",
+      "name": "style.css",
+      "size": 21,
+      "content": "@import './base.css';"
+    },
+    {
+      "path": "src/base.css",
+      "name": "base.css",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "src/data.json",
+      "name": "data.json",
+      "size": 2,
+      "content": "{}"
+    },
+    {
+      "path": "assets/react.svg",
+      "name": "react.svg",
+      "size": 6,
+      "content": "<svg/>"
+    },
+    {
+      "path": "index.html",
+      "name": "index.html",
+      "size": 63,
+      "content": "<script src=\"src/main.ts\"></script><link href=\"src/style.css\"/>"
+    },
+    {
+      "path": "python/main.py",
+      "name": "main.py",
+      "size": 40,
+      "content": "from .util import run\nimport python.util"
+    },
+    {
+      "path": "python/util.py",
+      "name": "util.py",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "native/main.cpp",
+      "name": "main.cpp",
+      "size": 17,
+      "content": "#include \"util.h\""
+    },
+    {
+      "path": "native/util.h",
+      "name": "util.h",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "app/Main.cs",
+      "name": "Main.cs",
+      "size": 16,
+      "content": "using app.Model;"
+    },
+    {
+      "path": "app/Model.cs",
+      "name": "Model.cs",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "go/main.go",
+      "name": "main.go",
+      "size": 17,
+      "content": "import (\"helper\")"
+    },
+    {
+      "path": "go/helper.go",
+      "name": "helper.go",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "rust/main.rs",
+      "name": "main.rs",
+      "size": 11,
+      "content": "use helper;"
+    },
+    {
+      "path": "rust/helper.rs",
+      "name": "helper.rs",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "thing.js",
+      "name": "thing.js",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "thing.test.js",
+      "name": "thing.test.js",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "name": "ci.yml",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "package.json",
+      "name": "package.json",
+      "size": 2,
+      "content": "{}"
+    },
+    {
+      "path": "Cargo.toml",
+      "name": "Cargo.toml",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "Dockerfile",
+      "name": "Dockerfile",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "compose.yaml",
+      "name": "compose.yaml",
+      "size": 0,
+      "content": ""
+    },
+    {
+      "path": "Resources/base.yml",
+      "name": "base.yml",
+      "size": 16,
+      "content": "- id: BaseEntity"
+    },
+    {
+      "path": "Resources/child.yml",
+      "name": "child.yml",
+      "size": 66,
+      "content": "- id: ChildEntity\n  parent: BaseEntity\n  sprite: Mobs/Joe/base.rsi"
+    },
+    {
+      "path": "Resources/Textures/Mobs/Joe/base.rsi/meta.json",
+      "name": "meta.json",
+      "size": 28,
+      "content": "{\"states\":[{\"name\":\"idle\"}]}"
+    },
+    {
+      "path": "Resources/Textures/Mobs/Joe/base.rsi/idle.png",
+      "name": "idle.png",
+      "size": 0,
+      "content": null
+    }
+  ]
+}

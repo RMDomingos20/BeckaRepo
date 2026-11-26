@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "src/main.js",
+      "name": "main.js",
+      "path": "src/main.js",
+      "size": 30,
+      "weight": 4
+    },
+    {
+      "id": "src/utils.js",
+      "name": "utils.js",
+      "path": "src/utils.js",
+      "size": 30,
+      "weight": 4
+    },
+    {
+      "id": "assets/logo.png",
+      "name": "logo.png",
+      "path": "assets/logo.png",
+      "size": 12,
+      "weight": 0
+    }
+  ],
+  "edges": [
+    {
+      "id": "[\"src/main.js\",\"src/utils.js\",\"import\"]",
+      "source": "src/main.js",
+      "target": "src/utils.js",
+      "type": "import",
+      "detail": "./utils.js",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/main.js\",\"src/utils.js\",\"reference\"]",
+      "source": "src/main.js",
+      "target": "src/utils.js",
+      "type": "reference",
+      "detail": "./utils.js",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/utils.js\",\"src/main.js\",\"import\"]",
+      "source": "src/utils.js",
+      "target": "src/main.js",
+      "type": "import",
+      "detail": "./main.js",
+      "bidirectional": false
+    },
+    {
+      "id": "[\"src/utils.js\",\"src/main.js\",\"reference\"]",
+      "source": "src/utils.js",
+      "target": "src/main.js",
+      "type": "reference",
+      "detail": "./main.js",
+      "bidirectional": false
+    }
+  ],
+  "stats": {
+    "files": 3,
+    "edges": 4,
+    "connected": 2
+  }
+}

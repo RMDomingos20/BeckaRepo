@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "BeckaRepo",
+  "version": "1.1.0",
+  "identifier": "com.beckarepo.app",
+  "build": {
+    "beforeDevCommand": "npm run dev:vite",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build:ui",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [{ "label": "main", "title": "BeckaRepo", "width": 1280, "height": 800, "minWidth": 800, "minHeight": 600, "backgroundColor": "#151318", "dragDropEnabled": true }],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' blob: data:; media-src 'self' blob:; connect-src ipc: http://ipc.localhost",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:5173 http://localhost:5173"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.ico", "icons/icon.png"],
+    "shortDescription": "Local repository and dependency explorer"
+  }
+}

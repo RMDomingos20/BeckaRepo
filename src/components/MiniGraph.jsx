@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 
 export function MiniGraph({ anchorId, selectedId, graph, onSelect }) {
@@ -61,7 +61,7 @@ export function MiniGraph({ anchorId, selectedId, graph, onSelect }) {
       .attr('refX',17).attr('refY',0)
       .attr('markerWidth',5).attr('markerHeight',5)
       .attr('orient','auto')
-      .append('path').attr('d','M0,-3L7,0L0,3').attr('fill','#2a1f45');
+      .append('path').attr('d','M0,-3L7,0L0,3').attr('fill','#505860');
 
     defs.append('marker')
       .attr('id','mgarr-sel')
@@ -69,7 +69,7 @@ export function MiniGraph({ anchorId, selectedId, graph, onSelect }) {
       .attr('refX',17).attr('refY',0)
       .attr('markerWidth',5).attr('markerHeight',5)
       .attr('orient','auto')
-      .append('path').attr('d','M0,-3L7,0L0,3').attr('fill','#c084fc');
+      .append('path').attr('d','M0,-3L7,0L0,3').attr('fill','#a4b8c4');
 
     const g = sv.append('g');
     sv.call(d3.zoom().scaleExtent([0.2,5]).on('zoom', ev => g.attr('transform', ev.transform)));
@@ -84,7 +84,7 @@ export function MiniGraph({ anchorId, selectedId, graph, onSelect }) {
     const link = g.append('g').selectAll('line')
       .data(validEdges).join('line')
       .attr('class', 'mini-link')
-      .attr('stroke', '#2a1f4580')
+      .attr('stroke', '#50586080')
       .attr('stroke-width', 1)
       .attr('marker-end', 'url(#mgarr)');
 
@@ -106,8 +106,8 @@ export function MiniGraph({ anchorId, selectedId, graph, onSelect }) {
       .attr('font-size','8px').attr('font-family','monospace');
 
     sim.on('tick', () => {
-      link.attr('x1',d=>d.target.x).attr('y1',d=>d.target.y)
-          .attr('x2',d=>d.source.x).attr('y2',d=>d.source.y);
+      link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+          .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
       node.attr('transform',d=>`translate(${d.x||0},${d.y||0})`);
     });
 
@@ -124,9 +124,9 @@ export function MiniGraph({ anchorId, selectedId, graph, onSelect }) {
       .attr('stroke', d => {
         const sId = d.source.id || d.source;
         const tId = d.target.id || d.target;
-        if (sId === selectedId || tId === selectedId) return '#c084fc';
-        if (sId === anchorId || tId === anchorId) return '#f59e0b66';
-        return '#2a1f4540';
+        if (sId === selectedId || tId === selectedId) return '#a4b8c4';
+        if (sId === anchorId || tId === anchorId) return '#c2ac7e66';
+        return '#50586040';
       })
       .attr('stroke-width', d => {
         const sId = d.source.id || d.source;
@@ -144,21 +144,21 @@ export function MiniGraph({ anchorId, selectedId, graph, onSelect }) {
       .attr('r', d => d.id === selectedId ? 16 : (d.id === anchorId ? 14 : 10))
       .attr('fill', d => {
         if (d.id === selectedId) return d.ft.c + '33';
-        if (d.id === anchorId) return '#c084fc22';
+        if (d.id === anchorId) return '#a4b8c422';
         return d.ft.c + '18';
       })
       .attr('stroke', d => {
-        if (d.id === selectedId) return '#c084fc';
-        if (d.id === anchorId) return '#f59e0b';
+        if (d.id === selectedId) return '#a4b8c4';
+        if (d.id === anchorId) return '#c2ac7e';
         return d.ft.c;
       })
       .attr('stroke-width', d => d.id === selectedId ? 3 : (d.id === anchorId ? 2.5 : 1.5));
 
     sv.selectAll('.node-text')
       .attr('fill', d => {
-        if (d.id === selectedId) return '#c084fc';
-        if (d.id === anchorId) return '#f0e6ff';
-        return '#8b7aa8';
+        if (d.id === selectedId) return '#a4b8c4';
+        if (d.id === anchorId) return '#e5e7e9';
+        return '#b1b8bf';
       })
       .attr('font-weight', d => (d.id === selectedId || d.id === anchorId) ? 'bold' : 'normal');
 
@@ -167,7 +167,7 @@ export function MiniGraph({ anchorId, selectedId, graph, onSelect }) {
   return (
     <svg
       ref={svgRef}
-      style={{width:'100%', height:'100%', display:'block', background:'#020408'}}
+      style={{width:'100%', height:'100%', display:'block', background:'#191c1f'}}
     />
   );
 }

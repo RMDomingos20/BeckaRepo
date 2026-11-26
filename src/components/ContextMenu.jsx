@@ -1,11 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 
-const T = {
-  bgDeep: '#020408', border: '#1a1f35', accent: '#c084fc',
-  textHi: '#f0e6ff', textMid: '#8b7aa8', textLow: '#3d3550',
-  mono: "'JetBrains Mono', monospace", hover: '#c084fc18'
-};
+import { theme as T } from '../styles/theme.js';
 
 export function ContextMenu({ menu, closeMenu, actions }) {
   const menuRef = useRef(null);
@@ -26,22 +22,22 @@ export function ContextMenu({ menu, closeMenu, actions }) {
 
   const btnStyle = {
     background: 'transparent', border: 'none', color: T.textMid,
-    padding: '8px 14px', textAlign: 'left', fontSize: '10px',
-    fontFamily: T.mono, cursor: 'pointer', display: 'flex', gap: '8px',
+    padding: '8px 14px', textAlign: 'left', fontSize: 11,
+    fontFamily: T.ui, cursor: 'pointer', display: 'flex', gap: '8px',
     alignItems: 'center', transition: 'all 0.1s'
   };
 
   return (
     <div ref={menuRef} style={{
       position: 'fixed', top: menu.y, left: menu.x, zIndex: 9999,
-      background: '#03060de6', backdropFilter: 'blur(8px)',
-      border: `1px solid ${T.accent}55`, borderRadius: '6px',
+      background: '#25292de6', backdropFilter: 'none',
+      border: `1px solid ${T.borderHi}`, borderRadius: '6px',
       boxShadow: '0 4px 24px #000000aa', display: 'flex', flexDirection: 'column',
       padding: '4px', minWidth: '160px', animation: 'fadeIn 0.1s ease-out'
     }}>
       {isNode ? (
         <>
-          <div style={{ padding: '4px 8px', fontSize: '8px', color: T.textLow, textTransform: 'uppercase' }}>
+          <div style={{ padding: '4px 8px', fontSize: 11, color: T.textLow, textTransform: 'uppercase' }}>
             {t('ctx_file')}
           </div>
           <button style={btnStyle} onMouseEnter={e => { e.target.style.background = T.hover; e.target.style.color = T.textHi; }} onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = T.textMid; }} onClick={() => { actions.copyPath(menu.node); closeMenu(); }}>
@@ -56,7 +52,7 @@ export function ContextMenu({ menu, closeMenu, actions }) {
         </>
       ) : (
         <>
-          <div style={{ padding: '4px 8px', fontSize: '8px', color: T.textLow, textTransform: 'uppercase' }}>
+          <div style={{ padding: '4px 8px', fontSize: 11, color: T.textLow, textTransform: 'uppercase' }}>
             {t('ctx_global')}
           </div>
           <button style={btnStyle} onMouseEnter={e => { e.target.style.background = T.hover; e.target.style.color = T.textHi; }} onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = T.textMid; }} onClick={() => { actions.resetIsolation(); closeMenu(); }}>

@@ -1,0 +1,4 @@
+[workspace]
+members = ["crates/beckarepo-core", "src-tauri"]
+default-members = ["src-tauri"]
+resolver = "2"
