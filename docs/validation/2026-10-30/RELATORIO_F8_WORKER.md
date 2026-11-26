@@ -1,63 +1,58 @@
-# F8 — física do Canvas em Worker — 30/10/2026
+# F8 — Canvas Physics in a Web Worker (2026-10-30)
 
-Entrega seguinte ao [piloto F7](RELATORIO_F6_F7.md), autorizada pelo usuário. O Canvas calcula forças em Worker de módulo, mantendo desenho e interação na interface. Abrange grafos global/de busca acima de 800 nós e Canvas de coalteração. Sem alteração de banco, dependência nova ou download de repositório externo.
+Follow-up to the [F6/F7 report](RELATORIO_F6_F7.md). Moves D3 force calculations into a module Web Worker while keeping rendering and interaction on the UI thread across global/search graphs (> 800 nodes) and the co-change Canvas. Introduced no database changes, new dependencies, or external downloads.
 
-## Implementação
+## Implementation
 
-- `src/workers/denseLayoutRuntime.js`: mesmas forças/limiares do Canvas anterior, simulação agendada e buffers transferíveis. Apenas um lote sem confirmação; envio aproximadamente a cada 80 ms ou ao estabilizar.
-- `src/utils/denseLayoutClient.js`: topologia/posições numéricas sem fontes/caminhos, revisão de arrastes, descarte de respostas antigas, encerramento ao trocar grafo e fallback para posições estáticas em falha. Watchdog de 30 segundos sem progresso.
-- `DenseGraphCanvas.jsx`: integra Worker, preserva seleção/câmera e posições no escopo anterior, fixa/libera nós e mostra medição de cálculo/aplicação/desenho.
-- O Worker não recebe estado React, câmera, nomes de arquivos ou conteúdo do repositório. A interface ainda arca com montagem da topologia, aplicação das posições, índice espacial, recorte e desenho.
+- `src/workers/denseLayoutRuntime.js`: preserves existing force constants and thresholds, schedules ticks, and transfers coordinate buffers with backpressure (at most one unacknowledged batch, posted roughly every 80 ms or upon stabilization).
+- `src/utils/denseLayoutClient.js`: sends numeric topology/positions only (no source text or file paths), tracks drag revisions, discards stale responses, terminates cleanly on graph switches, falls back to static positions on failure, and enforces a 30-second stall watchdog.
+- `DenseGraphCanvas.jsx`: integrates the Worker client, preserves selection, camera, and positions within the same snapshot/mount, supports node pin/unpin, and reports separate compute, apply, and draw timings.
+- The Worker receives no React state, camera state, filenames, or repository contents. Topology assembly, position application, spatial indexing, clipping, and Canvas drawing remain on the UI thread.
 
-## Verificações
+## Checks
 
-| Verificação | Resultado |
+| Check | Result |
 | --- | --- |
-| JavaScript | **12 testes passaram**, sem falhas: 7 existentes e 5 novos. |
-| Worker real | Transferência de ownership de buffers, limite de um lote sem ack, 1.000 nós com pin/unpin e estabilização; 85.224 nós com isolados; topologia inválida recusada. |
-| Cliente do renderer | Respostas anteriores ao arraste/liberação ou posteriores à desmontagem ignoradas; coordenadas não finitas e falha de inicialização preservam layout estático. |
-| Rust | **63 testes passaram na rodada F6/F7**, imediatamente anterior. Nenhum fonte Rust alterado em F8; não repetidos por alteração exclusivamente da interface. |
-| Formatação | `cargo fmt --all -- --check` passou novamente. |
-| ESLint | Sem erros. |
-| Build Windows | `npm run build` concluiu: bundle do Worker 50,48 kB, executável Rust release e NSIS x64 1.1.0 de 4,31 MiB. Instalador não executado. |
+| JavaScript | **12 passed**, 0 failed (7 existing + 5 new Worker/client tests). |
+| Real Worker tests | Buffer ownership transfer, single unacked batch backpressure, 1,000 nodes with pin/unpin and stabilization, 85,224 nodes with isolated nodes, and rejection of invalid topologies. |
+| Renderer client tests | Responses predating drag/unpin or arriving after unmount are discarded; non-finite coordinates and init failures safely retain the static layout. |
+| Rust | **63 passed in the prior F6/F7 pass**; no Rust files changed in this UI-only update. |
+| Formatting & Lint | `cargo fmt --all -- --check` and `npm run lint` passed with zero errors. |
+| Windows build | `npm run build` succeeded: 50.48 kB Worker bundle, release Rust binary, and NSIS x64 1.1.0 installer (4.31 MiB; not executed). |
 
-- `beckarepo.exe` (19949568 bytes), SHA-256 `C74AD93A4F4174CB85B537BBCBE233783C5A5B28BFB10537E77D4299BB7A0834`.
-- `BeckaRepo_1.1.0_x64-setup.exe` (4515570 bytes), SHA-256 `00AEE18E07E1B40FBEC1A4778765C743DE2A213AC59B749711EB0D49F6A044A6`.
+- Binary: `target/release/beckarepo.exe` (19,949,568 bytes, SHA-256 `C74AD93A4F4174CB85B537BBCBE233783C5A5B28BFB10537E77D4299BB7A0834`)
+- Installer: `target/release/bundle/nsis/BeckaRepo_1.1.0_x64-setup.exe` (4,515,570 bytes, SHA-256 `00AEE18E07E1B40FBEC1A4778765C743DE2A213AC59B749711EB0D49F6A044A6`)
 
-## Ensaio sintético comparativo
+## Synthetic Benchmark
 
-Executado `node tests/benchmark-dense-layout.mjs`. Ryzen 5 2600, 16 GiB, Node v22.22.2. Uma execução por cenário/modo, algoritmo e agendamento idênticos, sem desenho de Canvas. As datas UTC nos logs correspondem à noite de 30/10 no fuso America/Sao_Paulo.
+Executed `node tests/benchmark-dense-layout.mjs` on AMD Ryzen 5 2600, 16 GiB RAM, Node v22.22.2 (single pass per scenario, identical algorithm/scheduling, without Canvas drawing):
 
-| Nós / conexões | Tempo total principal / Worker | Cálculo principal / Worker | Maior intervalo do temporizador principal / Worker |
-| --- | --- | --- | --- |
-| 1.000 / 1.500 | 4.724 / 5.788 ms | 852 / 868 ms | 44 / 32 ms |
-| 10.000 / 15.000 | 20.867 / 21.208 ms | 17.155 / 16.713 ms | 309 / 32 ms |
-| 85.224 / 91.745 | 2.452 / 3.853 ms | 819 / 1.159 ms | 101 / 32 ms |
+| Nodes / Connections | Total Time (Main / Worker) | Compute Time (Main / Worker) | Max Event-Loop Gap (Main / Worker) |
+| --- | ---: | ---: | ---: |
+| 1,000 / 1,500 | 4,724 / 5,788 ms | 852 / 868 ms | 44 / 32 ms |
+| 10,000 / 15,000 | 20,867 / 21,208 ms | 17,155 / 16,713 ms | 309 / 32 ms |
+| 85,224 / 91,745 | 2,452 / 3,853 ms | 819 / 1,159 ms | 101 / 32 ms |
 
-O modo acima de 15 mil nós usa forças simplificadas, por isso o cenário maior pode terminar antes do de 10 mil. Worker aumenta custo de inicialização/transporte e não promete terminar antes. O ensaio indica redução de bloqueio do event loop pelo cálculo; não comprova FPS, p95, memória, latência total ou legibilidade no repositório real.
+Graphs over 15,000 nodes use simplified forces, explaining why the 85k run finishes faster than 10k. Using a Worker adds initialization/transfer overhead but keeps the main-thread timer gap flat at ~32 ms instead of spiking to 309 ms. This measures event-loop blocking, not WebView FPS, p95 frame time, or memory.
 
-## Validação visual nativa
+## Native UI Validation
 
-Janela **BeckaRepo Validation**, identidade `com.beckarepo.validation`, iniciada com `npm run tauri -- dev --config tests/validation.tauri.json --no-watch`. Pasta sintética isolada `target/validation/f8-ui-repo`, com 1.001 fontes JS, cada um importando o seguinte em um anel; resultado: **1.001 arquivos e 1.001 conexões**.
+Tested in **BeckaRepo Validation** (`com.beckarepo.validation`) on synthetic fixture `target/validation/f8-ui-repo` (1,001 JS files arranged in an import ring: **1,001 files, 1,001 connections**):
 
-Observado pela skill Computer Use na janela Tauri:
+- Opened and rendered the global graph without errors.
+- Worker stabilized in 151 iterations (988 ms cumulative compute, 516 KiB received); sample frame drew in 1.6 ms with 0.1 ms apply time.
+- Selecting `file0.js` in the tree highlighted only its two connections (`file1.js` and `file1000.js`), matching the details panel.
+- **Locate selected** zoomed camera from 62.2% to 200%, preserving selection and edges.
+- Dragging the selected node moved it immediately, pinned it, and resumed background simulation; double-clicking unpinned it back into force simulation.
+- Toggling the `import` filter off and on transitioned connections `2 → 0 → 2` while preserving `file0.js` selection and 200% zoom across Worker restart.
 
-- Abertura e renderização do grafo global, sem tela de erro.
-- Worker estabilizado em 151 iterações; cálculo acumulado 988 ms e 516 KiB recebidos nessa execução. Uma captura mostrou desenho de 1,6 ms e aplicação de 0,1 ms; são amostras, não percentis.
-- Seleção de file0.js pela árvore: somente suas duas conexões destacadas, com file1.js e file1000.js, coerentes com o painel de importação/consumo.
-- **Localizar selecionado**: câmera de 62,2% para 200%, seleção e conexões preservadas.
-- Arraste do nó selecionado: posição alterada imediatamente, seleção preservada e simulação retomada em segundo plano. Duplo clique liberou o nó, que voltou a se movimentar sob as forças.
-- Desativação/restauração de import: conexões passaram de duas para zero e retornaram; seleção de file0.js e zoom de 200% preservados durante a reinicialização do Worker.
+## Limits & Next Deliverable
 
-Capturas foram inspecionadas na conversa; não foram exportadas como PNG. Banco de produção não utilizado e nenhuma restauração executada nesta entrega.
+`VIS-01` remained partial here pending real-world WebView benchmarks (later measured in [2026-11-25 Graph Report](../2026-11-25/RELATORIO_GRAFO.md)), clean-machine install checks, and edge-case keyboard/focus/locale transitions. Small SVG and local neighborhood graphs still run force simulation on the main thread.
 
-## Limites e próxima entrega
+Next slice: [F8 Folder Drill-Down](../2026-10-31/RELATORIO_F8_PASTAS.md).
 
-VIS-01 permanece parcial. Faltam benchmark real na WebView (p50/p95 de frames, pico de RAM Rust/WebView, frio/quente), aceite do repositório de 85 mil arquivos, instalação em máquina limpa e todos os cenários de teclado, perda de foco, troca de idioma e reinício. SVG pequeno e grafo local ainda calculam forças na thread principal.
-
-Próxima entrega de F8: LOD hierárquico por pastas e arestas agregadas, com seleção/câmera preservadas e medições na WebView. Resolução global de símbolos F7 e pendências de aceite das fases anteriores continuam registradas no roadmap. Esta entrega não declara F8 concluída.
-
-## Reprodução
+## Reproduction
 
 ```powershell
 node --test tests/ui-utils.test.mjs tests/dense-layout.test.mjs
@@ -66,4 +61,4 @@ npm run lint
 npm run build
 ```
 
-`tests/run-validation.ps1 -Build` inclui agora os cinco testes do Worker, além das suítes anteriores.
+`tests/run-validation.ps1 -Build` includes the five Worker tests alongside prior suites.

@@ -1,44 +1,40 @@
-# Validação F6 e piloto F7 — 30/10/2026
+# Validation F6 & F7 Pilot — 2026-10-30
 
-F6 implementada para a cobertura de [dependências externas](../../ETAPA_F6.md). Piloto de [símbolos F7](../../ETAPA_F7.md) implementado para JS/TS/Rust. SYM-03 permanece parcial: resolução lexical local não equivale a resolução global de símbolos, tipos ou chamadas entre arquivos.
+Covers [F6 — External Dependencies](../../ETAPA_F6.md) and the [F7 — Symbols Pilot](../../ETAPA_F7.md) for JS/TS/Rust. `SYM-03` remained partial here: local lexical call resolution does not provide cross-file symbol, type, or call resolution.
 
-## Validação automatizada
+## Automated Validation
 
-Executado `tests/run-validation.ps1 -Build -OutputDirectory docs/validation/2026-10-30/f7-logs`, com bancos e repositórios de testes isolados. Nenhum banco de produção foi restaurado ou migrado nesta rodada.
+Ran `tests/run-validation.ps1 -Build -OutputDirectory docs/validation/2026-10-30/f7-logs` using isolated test databases and repositories without touching production storage.
 
-| Verificação | Resultado e evidência |
+| Check | Result & Evidence |
 | --- | --- |
-| Rust, workspace offline | **63 aprovados**, zero falhas: 22 host, 2 CLI, 2 contrato, 8 pacotes, 7 caminhos Rust, 15 fases anteriores, 7 símbolos. |
-| Utilitários JavaScript | **7 aprovados**, zero falhas. Contrato de pacotes legado/atual, ciclos no impacto indireto, árvore, texto Unicode e geometria com 85.224 nós. |
-| Formatação Rust | `cargo fmt --all -- --check` passou na rodada. |
-| ESLint final | Sem erros. |
-| Build final | Vite, executável Rust release e instalador NSIS 1.1.0 x64 gerados; aproximadamente 4,29 MiB. Não instalado. |
+| Rust workspace (offline) | **63 passed**, 0 failed: 22 host, 2 CLI, 2 contract, 8 packages, 7 Rust paths, 15 prior phases, 7 symbols. |
+| JavaScript utilities | **7 passed**, 0 failed: legacy/current package contract, indirect impact cycles, folder tree, Unicode text, and 85,224-node geometry. |
+| Rust formatting | `cargo fmt --all -- --check` passed. |
+| ESLint | Zero errors across the codebase. |
+| Release build | Vite bundle, Rust release executable, and Windows NSIS 1.1.0 x64 installer (~4.29 MiB) built cleanly (not executed). |
 
-F6 foi validada também em rodada anterior com 55 testes Rust/7 JS. A suíte atual incorpora esses testes. Os registros Cargo em stderr são progresso de compilação, não falhas: o resultado de cada suíte e o código de saída determinam o sucesso.
+F6 had also passed an earlier run with 55 Rust / 7 JS tests; this suite supersedes that pass.
 
-Os testes F7 verificam decisões reais, funções aninhadas, recursão, shadowing, chamadas dinâmicas sem aresta inventada, Unicode/intervalos UTF-8, identidades vinculadas à revisão, TSX, erros sintáticos, macros/strings/comentários, cancelamento e limites. O host rejeita arquivos ausentes, caminhos externos, revisão alterada e sessão expirada.
+F7 tests verify decision scoring rules, nested functions, recursion, lexical shadowing, dynamic calls (no guessed edges), Unicode/UTF-8 byte spans, revision-bound identities, TSX, syntax errors, macros/strings/comments, cancellation, and size/time limits. The host rejects missing files, out-of-root paths, changed revisions, and expired sessions.
 
-## Aceite visual nativo
+## Native UI Acceptance
 
-Usado `npm run tauri -- dev --config tests/validation.tauri.json --no-watch`, janela **BeckaRepo Validation**, identidade `com.beckarepo.validation`. Inspeção pela skill de controle de computador com capturas e árvore de acessibilidade da janela Tauri; não foi um mock no navegador.
+Verified in the isolated **BeckaRepo Validation** window (`npm run tauri -- dev --config tests/validation.tauri.json --no-watch`, ID `com.beckarepo.validation`) against the local fixture `target/validation/f6-ui-repo` (`package.json`, `package-lock.json` v3, two TypeScript sources, and `symbols.rs`).
 
-Fixture local `target/validation/f6-ui-repo`: package.json, package-lock v3, dois fontes TypeScript e, em 30/10, symbols.rs. As capturas foram inspecionadas na conversa, sem exportação de PNG para este relatório.
-
-| Cenário observado | Resultado |
+| Observed Scenario | Result |
 | --- | --- |
-| F6 lista de 28 declarações | Paginação 1/2 e 2/2, 20 itens por página. |
-| Alias e versões | `alias → real` em 1.2.0 e `@scope/lib` em 3.0.0 apresentados. |
-| Declaração sem import | `unused`, declaração ^2 e lock 2.0.0, zero consumidores; relações declares/resolves-to distintas. |
-| F7 extração nativa | 4 símbolos: ação, auxiliar, sem_chamadas e main; 2 chamadas resolvidas. |
-| Complexidade | ação=3, auxiliar=2, sem_chamadas=1 e main=1; público/possível entrypoint sinalizados. |
-| Fonte Unicode | ação em linhas 2–4, UTF-8 [46,122), trecho legível e evidências disponíveis. |
-| Grafo | main → auxiliar → ação; sem_chamadas isolado. Ajustado de quatro para duas colunas para caber no painel de 380 px. |
-| Zoom/recolhimento | Zoom observado de 1 para 1,5; recolhimento retorna à lista. Persistência da seleção após recolher não teve aceite visual completo. |
+| F6 list (28 declarations) | Paginated cleanly (`1/2` and `2/2`, 20 items per page). |
+| Aliases & versions | Displayed `alias → real` at `1.2.0` and `@scope/lib` at `3.0.0`. |
+| Unimported declaration | `unused` showed declared `^2` and lock `2.0.0` with zero consumers; `declares` and `resolves-to` edges remained distinct. |
+| F7 symbol extraction | Extracted 4 symbols (`ação`, `auxiliar`, `sem_chamadas`, `main`) and 2 resolved local calls. |
+| Complexity scoring | `ação=3`, `auxiliar=2`, `sem_chamadas=1`, `main=1`; public visibility and potential entrypoint flagged. |
+| Unicode source spans | `ação` located at lines 2–4, UTF-8 bytes `[46,122)`, with readable preview and decision evidence. |
+| Symbol graph | Rendered `main → auxiliar → ação` with `sem_chamadas` isolated. Adjusted layout from 4 columns to 2 columns to fit cleanly inside the 380 px side panel. |
+| Zoom / collapse | Zoom tested from `1` to `1.5`; collapsing returned to the list view (post-collapse selection persistence remained unverified visually). |
 
-## Limitações do aceite
+## Scope Limits
 
-Não aprovados implicitamente: filtro visual de zero chamadas, paginação visual de 40 símbolos, todos os tipos de linguagem, consumidores indiretos na UI, navegação automática ao detalhe F6 e instalação em máquina limpa. A lógica de impacto indireto está coberta por testes automatizados. O grafo de 85.224 nós foi exercitado em geometria sintética, não como benchmark de FPS do repositório real.
+Not visually verified in this pass: zero-calls filter toggle, 40-symbol pagination, all supported language constructs, indirect consumer views in UI, auto-navigation to F6 detail, and clean-machine installer execution (indirect impact logic is covered by automated tests). The 85,224-node check remained synthetic geometry only.
 
-Permanecem as pendências históricas do [aceite F0–F5](../2026-10-28/VALIDACAO_VISUAL.md), incluindo fluxos de recuperação/reassociação e medições de escala. Esta rodada não marca essas pendências como concluídas.
-
-Por solicitação posterior do usuário, o trabalho prosseguiu para uma entrega de F8: física do Canvas em Worker e medição separada de cálculo/desenho. O build de F8 substitui os binários no mesmo caminho; este relatório registra o build F6/F7 observado, não um arquivo imutável separado.
+Prior items from [2026-10-28 Visual Validation](../2026-10-28/VALIDACAO_VISUAL.md) remained tracked separately. Subsequent work proceeded to [F8 Worker Physics](RELATORIO_F8_WORKER.md), which overwrites the shared output paths under `target/release/`.

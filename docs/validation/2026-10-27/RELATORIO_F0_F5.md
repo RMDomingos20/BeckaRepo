@@ -1,139 +1,139 @@
-# Validação F0–F5 — BeckaRepo
+# Validation Report F0–F5 — BeckaRepo
 
-Data: **27/10/2026**, fuso America/Sao_Paulo. Versão do aplicativo: **1.1.0**.
+Date: **2026-10-27** (America/Sao_Paulo). Application version: **1.1.0** (Tauri/Rust migration).
 
-Continuações posteriores: [validação visual em 28/10](../2026-10-28/VALIDACAO_VISUAL.md), com acesso nativo restabelecido, e [entrega de atributos Rust em 29/10](../2026-10-29/RELATORIO_F5_PATH.md), autorizada pelo usuário. Este documento preserva o estado e os resultados da rodada de 27/10.
+Follow-ups: [Visual Validation (2026-10-28)](../2026-10-28/VALIDACAO_VISUAL.md) and [Rust `#[path]` Attribute Delivery (2026-10-29)](../2026-10-29/RELATORIO_F5_PATH.md). This report records the state and automated results of the 2026-10-27 verification pass.
 
-## Parecer
+## Summary
 
-**A suíte automatizada passou. O aceite completo da aplicação permanece parcial.**
+**The automated test suite passed. Full interactive acceptance of the desktop application remained partial at this stage.**
 
-- **40 testes Rust passaram**, sem falhas ou testes ignorados: 21 no host, 15 no corpus/pipeline, 2 de contrato e 2 de CLI/limites.
-- **5 testes JavaScript passaram**, cobrindo utilitários usados pela interface e geometria do grafo denso.
-- ESLint de todo o projeto e verificação de formatação Rust passaram.
-- Build de produção concluído: interface, executável Rust e instalador NSIS x64 (aproximadamente 4,20 MiB). O instalador foi gerado, não instalado.
-- A CLI executou análises reais de um repositório sintético e deste próprio projeto.
-- Foram criados bancos SQLite, repositórios Git, worktree e clone raso locais exclusivos para os testes.
-- **Validação visual pendente:** o controle de computador recusou acesso à janela com `Computer Use was not approved to use beckarepo`. Na continuação, o usuário salvou a autorização documentada no `config.toml`, primeiro por executável e depois pelo identificador completo retornado pelo controle de computador. A configuração foi conferida como TOML válido, mas a sessão atual continuou recusando acesso. É necessário retomar após reiniciar o Codex para verificar o carregamento da alteração; não há confirmação de que isso resolverá a recusa. Não foram aprovados fluxos interativos sem observação.
+- **40 Rust tests passed** with zero failures or skipped tests: 21 in the desktop host, 15 in the corpus/pipeline suite, 2 contract tests, and 2 CLI/limits tests.
+- **5 JavaScript tests passed**, covering UI utilities and dense graph geometry.
+- Full-project ESLint and Rust formatting checks passed.
+- Production build succeeded: frontend bundle, Rust binary, and Windows NSIS x64 installer (~4.20 MiB). The installer was built and verified on disk, not executed via setup wizard.
+- The CLI ran end-to-end analyses against a synthetic fixture and this repository.
+- Isolated SQLite databases, Git repositories, a linked worktree, and a local shallow clone were used exclusively for testing.
+- **Interactive UI verification deferred:** Window-level UI verification in the isolated desktop target was blocked by environment window-access permissions during this run and completed in the [2026-10-28 visual pass](../2026-10-28/VALIDACAO_VISUAL.md).
 
-Não há falha restante nos cenários automatizados executados. Isso não equivale a declarar F0–F5 integralmente concluídas: há critérios do roadmap e fluxos de integração ainda sem cobertura. **A próxima implementação não foi iniciada**, respeitando a condição de avançar somente após a validação. A preparação e os critérios de liberação estão ao final.
+All automated checks passed without errors. However, automated coverage alone does not close every roadmap criterion or interactive workflow; remaining visual checks and preparation items for the next milestone are listed below.
 
-## Continuação: integrações e autorização do desktop
+## Extended Integration Checks
 
-Após o pedido para resolver a autorização, foram acrescentados **seis testes Rust e dois JavaScript**. Os resultados de 40/5 acima substituem os totais iniciais de 34/3; não são contagens de execuções repetidas.
+Six additional Rust tests and two JavaScript tests were added during this pass, bringing the totals from 34/3 to **40 Rust / 5 JavaScript**:
 
-| Teste adicional | Resultado comprovado |
+| Added Test | Verified Behavior |
 | --- | --- |
-| Transferência completa de snapshot | Quatro seções, múltiplos lotes, rejeição de IDs/cursores incorretos e repetidos, publicação somente ao completar, cancelamento bloqueia publicação e sessão antiga expira ao concluir. |
-| Cache Git persistente | Sobrevive à reabertura do SQLite, distingue chave de HEAD, expira após sete dias, limita a 64 entradas e recusa payload superior a 8 MiB. |
-| Restauração com banco disponível | Revalida rascunhos, restaura notas, conserva backup de segurança e invalida a sessão anterior. Executada a função de produção após a confirmação, sem automatizar diálogos. |
-| Recuperação de banco indisponível | Instala cópia validada e preserva bytes originais do banco corrompido e dos sidecars em `recovery-*`; nota recuperada conferida. |
-| Reassociação de localização | Recusa pasta antiga existente/reaparecida, rascunho, notas no destino e identidade antiga alterada; caminho válido é reassociado em transação, notas antigas ficam preservadas e sessão expira. |
-| Comparação Git local/staged | Distingue igual, modificado, staged, modificado após staging e untracked com colchetes no nome; CRLF/LF conta como diferença; filtro obrigatório indisponível não é executado pela comparação. |
-| Geometria e rótulos | Segmento com duas pontas fora da tela ainda aparece ao atravessar a área visível; rótulos sobrepostos/fora da área são recusados. |
-| Geometria com 85.224 nós | Todos os nós são contabilizados na visão geral; agrupamento gera 154 marcas; seleção fica acima dos grupos; zoom mantém a seleção e retorna exatamente os 42 nós esperados na região. |
+| Full snapshot transport | Four sections, multi-batch streaming, rejection of invalid/duplicate IDs and cursors, atomic publish on completion, cancellation blocking publish, and expiration of the prior session. |
+| Persistent Git cache | Survives SQLite reopen, keys by HEAD, expires after 7 days, caps at 64 entries, and rejects payloads over 8 MiB. |
+| Database restore (healthy DB) | Re-validates pending drafts, restores annotations, preserves safety backup, and invalidates the active session. Exercises the production routine directly. |
+| Unavailable DB recovery | Installs a validated backup copy and preserves original corrupted DB bytes and sidecars under `recovery-*`; verified recovered notes. |
+| Folder reassociation | Rejects existing/reappeared source folders, unsaved drafts, populated targets, and mismatched source identities; valid moves update in a transaction, preserve notes, and expire the session. |
+| Local/staged Git comparison | Distinguishes clean, modified, staged, modified-after-staging, and untracked paths (including brackets in filenames); treats CRLF/LF as different; avoids running external content filters. |
+| Geometry and labels | Segments with both endpoints off-screen still render when crossing the viewport; overlapping or out-of-bounds labels are rejected. |
+| 85,224-node geometry | All nodes accounted for in overview; clustering produces 154 markers; selected node stays above clusters; zoom preserves selection and returns the expected 42 nodes in region. |
 
-O último teste levou **99 ms** e o processo Node registrou pico de RSS de **104.308 KiB** nessa execução. É uma medição isolada de funções geométricas, incluindo criação do índice, e do processo de teste Node; **não mede um frame, a simulação D3, o Canvas, a WebView nem a memória do app desktop**. A legibilidade das 91.745 conexões do exemplo continua sem aceite visual.
+The 85,224-node geometry check took **99 ms** with a peak Node RSS of **104,308 KiB**. This isolates pure geometry and spatial-index math; it does **not** measure Canvas frame time, D3 simulation, WebView rendering, or desktop app memory. Visual legibility of the 91,745 connections in that dataset is tracked separately in [ETAPA_F8.md](../../ETAPA_F8.md) and later [graph validation](../2026-11-25/RELATORIO_GRAFO.md).
 
-Foram corrigidas duas lacunas encontradas ao tornar essas operações testáveis:
+Two gaps uncovered while making these routines testable were fixed:
 
-- A restauração agora confere novamente o estado de rascunhos depois do diálogo, antes de substituir dados.
-- A reassociação verifica novamente a existência da pasta antiga e sua identidade depois da confirmação.
+- Database restore now re-checks draft state after dialog confirmation before overwriting data.
+- Folder reassociation now re-verifies source directory absence and identity after confirmation.
 
-As rotinas internas extraídas são chamadas pelos comandos reais; os testes não mantêm uma cópia alternativa da lógica. Diálogos, ponte IPC da WebView e interação humana seguem fora da cobertura automatizada desta rodada.
+The extracted internal routines are called directly by the real Tauri commands rather than duplicated in tests. Native dialogs, WebView IPC round-trips, and live mouse/keyboard interactions remained outside automated coverage in this pass.
 
-Build de produção novamente concluído, etapa Rust em 1 min 01 s e instalador de aproximadamente 4,20 MiB. A instância isolada de validação foi encerrada explicitamente ao terminar as tentativas, sem interação ou edição de dados pela janela.
+The production build completed again (Rust release step: 1 min 01 s; NSIS installer: ~4.20 MiB). The isolated test window was closed cleanly after verification attempts.
 
-## Ambiente e método
+## Environment and Methodology
 
-Windows 11 Home 64 bits, versão 10.0.26100; AMD Ryzen 5 2600. Rust/Cargo 1.96.0, Node 22.22.2, npm 10.9.7, Git 2.49.0.windows.1. Dependências existentes e Cargo offline; nenhuma instalação adicional de dependências foi necessária.
+- **OS & Hardware:** Windows 11 Home 64-bit (10.0.26100), AMD Ryzen 5 2600.
+- **Toolchain:** Rust/Cargo 1.96.0, Node 22.22.2, npm 10.9.7, Git 2.49.0.windows.1 (offline Cargo dependencies).
 
-Os testes usam as funções de produção: scanner/resolvedores, transporte, métricas, adaptador Git e SQLite. A gravação/importação de anotações foi separada em funções internas compartilhadas pelos comandos Tauri e testes, mantendo as transações reais. Os testes de utilitários não montam componentes React nem simulam a ponte Tauri.
+Tests call production implementations directly across the scanner, resolvers, transport, metrics, Git adapter, and SQLite storage. Annotation writes and imports were factored into shared internal functions used by both Tauri commands and tests, keeping real SQLite transactions intact. JS utility tests run directly in Node without mounting React components or mocking the Tauri bridge.
 
-Foram usados três níveis de evidência:
+Verification relied on three layers of evidence:
 
-1. Casos determinísticos com resultados esperados explícitos, incluindo falhas deliberadas.
-2. Integração com filesystem, subprocessos Git, CLI e bancos SQLite reais isolados.
-3. Compilação/lint e tentativa de execução desktop. O terceiro nível **não substitui** a interação visual bloqueada.
+1. Deterministic unit cases with explicit expected outputs, including deliberate failure modes.
+2. Integration tests against the real filesystem, Git subprocesses, CLI binary, and isolated SQLite databases.
+3. Build, lint, and desktop launch checks (which do not replace visual inspection).
 
-### Isolamento
+### Test Isolation
 
-- Fixtures Rust: `%TEMP%\beckarepo-validation-<caso>-<pid>-<timestamp>`, preservadas para inspeção.
-- Fixture para aceite visual: `target/validation/ui-repo`, com histórico Git local, módulos Rust, imports TypeScript, texto, imagem e `.env` sintético excluído do inventário.
-- Desktop de validação: `tests/validation.tauri.json`, identidade **com.beckarepo.validation** e janela **BeckaRepo Validation**.
-- Confirmado no disco: `%LOCALAPPDATA%\com.beckarepo.validation\beckarepo.sqlite` (73.728 bytes ao verificar). O processo abriu uma janela, mas sua renderização e interações não puderam ser inspecionadas.
-- Os testes não abriram nem restauraram o banco de produção `com.beckarepo.app`. Nenhum fork remoto foi necessário: repositórios sintéticos, worktree e clone raso local permitem conhecer os resultados esperados sem executar código de terceiros.
+- **Rust fixtures:** `%TEMP%\beckarepo-validation-<case>-<pid>-<timestamp>` (preserved for inspection).
+- **UI fixture:** `target/validation/ui-repo`, containing local Git history, Rust modules, TypeScript imports, text files, an image, and a synthetic `.env` excluded by policy.
+- **Validation desktop target:** `tests/validation.tauri.json` using app ID `com.beckarepo.validation` and window title **BeckaRepo Validation**.
+- **Isolated database:** `%LOCALAPPDATA%\com.beckarepo.validation\beckarepo.sqlite` (73,728 bytes observed). The production database (`com.beckarepo.app`) was never touched. All Git scenarios used local synthetic repos, worktrees, and shallow clones without external network access.
 
-## Matriz por fase
+## Phase Coverage Matrix
 
-| Fase | Evidência executada | Resultado e limite |
+| Phase | Exercised Evidence | Status and Scope Limits |
 | --- | --- | --- |
-| F0 — política e limites | Nomes sensíveis, caixa/separadores, caminhos absolutos/`..`, confinamento, junction apontando para fora da raiz, limite de 500 KiB, 100.000 arquivos aceitos/100.001 recusados, entradas CLI inválidas | **Passou no escopo automatizado.** Symlink de arquivo não pôde ser criado por falta de privilégio Windows; o teste verificou escape por junction. Não certifica todos os limites agregados nem todas as corridas de filesystem. |
-| F1 — pipeline e conteúdo | Snapshot sem fontes, prévia Unicode/UTF-8 inválido, revisão alterada, busca paginada/cancelada, leitura de asset, cache incremental, invalidação por configuração, cancelamento, uma repetição após alteração e erro após três tentativas instáveis, sessões expiradas/estrangeiras, páginas IPC por bytes/itens e transição completa do transporte no host | **Passou no escopo automatizado.** Montagem da UI, fluxo IPC completo pela WebView, respostas tardias no cliente e desempenho de desenho não foram exercitados. |
-| F2 — persistência | Schema, reabertura, notas/tags/preferência, isolamento por worktree, migração de banco v1 preenchido para v2, conflitos de revisão, importação idempotente/atômica, backup/restauração/recuperação/rotação/reassociação, corrupção/versão futura/view recusadas, rollback, lock e cota SQLite esgotada | **Passou no escopo automatizado.** Operações de restauração/recuperação e reassociação foram executadas em bancos isolados; diálogos e acionamento pela WebView continuam pendentes. Falta de espaço foi simulada por `max_page_count`, sem encher o disco do usuário. |
-| F3 — Git | Repositório real com commits conhecidos, renome com espaço/colchetes, frequência/churn, `.git` em arquivo de worktree, clone raso, pasta sem Git, cancelamento/limite de saída, registro binário/sensível/inválido, invalidação, coalteração/autoria, exclusão de commits em massa, cache SQLite por reinício/expiração e comparação local/staged | **Passou no escopo automatizado.** Consulta completa via AppHandle/WebView, exibição e interação ainda precisam de aceite. |
-| F4 — estrutura | Graus, PageRank e Brandes em cadeia com valores de referência; componentes cíclicos e autoaresta; projeção com/sem herança; grafo vazio, cancelamento e amostragem em 300 nós | **Passou no escopo automatizado.** Paginação, seleção, camada de coalteração e explicação dos ciclos na janela não foram exercitadas. |
-| F5 — parser/resolução | Corpus JS/TS com JSONC, extends, paths, extensão substituída, import/require/re-export, evidências; Rust com targets personalizados, inline, crate/super, biblioteca própria, workspace/alias, ambiguidade, contexto compartilhado e identificador raw; diagnósticos para condições não resolvidas | **Piloto passou no corpus limitado.** Não equivale à resolução completa do compilador. `#[path]`, cfg/macros, símbolos/reexports e dependências externas continuam fora do aceite completo. |
+| F0 — Policy & limits | Sensitive filenames, case/separator variants, absolute/`..` paths, root confinement, out-of-root NTFS junction, 500 KiB text cap, 100,000 files accepted / 100,001 rejected, invalid CLI inputs | **Passed automated scope.** File symlinks could not be created without elevated Windows privileges; directory junction escape was verified instead. Does not exhaustively test all aggregate caps or filesystem race conditions. |
+| F1 — Pipeline & content | Source-free snapshots, Unicode/invalid UTF-8 preview, changed revision detection, paginated/canceled search, asset reads, incremental cache, config invalidation, cancellation, retry on disk change (error after 3 unstable passes), expired/foreign sessions, byte/item IPC paging, full host transport cycle | **Passed automated scope.** React mounting, full WebView IPC, stale client responses, and rendering throughput were not exercised here. |
+| F2 — Persistence | Schema creation, reopen, notes/tags/preferences, worktree isolation, v1-to-v2 migration on populated DB, revision conflicts, idempotent/atomic JSON import, backup/restore/recovery/rotation/reassociation, corruption/future-version/view rejection, rollback, locking, SQLite quota exhaustion | **Passed automated scope.** Restore, recovery, and reassociation ran against isolated DBs without UI dialogs. Disk-full conditions were simulated via `max_page_count`. |
+| F3 — Git | Real repo with known commits, renames with spaces/brackets, frequency/churn, `.git` worktree file, shallow clone, non-Git folder, cancellation/output cap, binary/sensitive/invalid records, cache invalidation, co-change/authorship, mass-commit exclusion, SQLite cache across restart/expiration, local/staged comparison | **Passed automated scope.** Full UI rendering and `AppHandle`/WebView wiring require interactive confirmation. |
+| F4 — Structure | Degree, PageRank, and Brandes betweenness on chains with reference values; cyclic SCCs and self-loops; projection with/without inheritance; empty graphs, cancellation, and 300-node sampling | **Passed automated scope.** UI pagination, row selection, co-change overlay, and cycle path expansion were exercised in the later visual pass. |
+| F5 — Parser & resolution | JS/TS corpus with JSONC, `extends`, `paths`, extension substitution, `import`/`require`/`re-export`, byte spans; Rust custom targets, inline `mod`, `crate`/`super`, own-crate lib references, workspace/alias dependencies, ambiguity, shared files, raw identifiers; diagnostics for unresolved cases | **Pilot passed on bounded corpus.** Does not equate to full compiler resolution. `#[path]`, `cfg`/macros, symbol/re-export resolution, and external packages remained outside this pass. |
 
-## Resultados numéricos
+## Measured Results
 
-### F1 — volume de fontes e atualização
+### F1 — Corpus Volume & Incremental Refresh
 
-Medições da rodada inicial em perfil debug, com outros processos ativos.
+Measured in debug profile under normal background machine load:
 
-| Medida | Resultado |
+| Metric | Result |
 | --- | ---: |
-| Arquivos de texto no corpus | 1.000 |
-| Bytes de fontes | 44.003.000 |
-| Snapshot JSON serializado | 397.867 bytes |
-| Primeira análise | 6.559 ms |
-| Atualização sem mudanças | 1.879 ms |
-| Relações/resultados reaproveitados | 1.000 arquivos |
+| Text files in corpus | 1,000 |
+| Total source bytes | 44,003,000 |
+| Serialized JSON snapshot | 397,867 bytes |
+| Initial analysis | 6,559 ms |
+| Incremental refresh (no changes) | 1,879 ms |
+| Reused file relations | 1,000 files |
 
-O snapshot corresponde a aproximadamente 0,90% dos bytes de fontes desse corpus. Isso comprova ausência de transporte indiscriminado do texto nessa amostra; **não é uma medição do pico de RAM**, de throughput garantido ou do desenho de 85 mil nós. O corpus contém comentários e não representa a densidade de conexões da imagem reportada anteriormente.
+The snapshot is ~0.90% of the raw source size, confirming source text is omitted from the snapshot payload. This is not a measure of peak RAM or 85k-node Canvas performance.
 
-### CLI real
+### CLI Runs
 
-| Origem | Arquivos/nós | Arestas | JSON | Tempo observado |
+| Source | Files / Nodes | Edges | JSON Size | Observed Time |
 | --- | ---: | ---: | ---: | ---: |
-| Fixture local | 9 | 5 | 6.114 bytes | 174 ms |
-| Este projeto, inventário selecionado pela política | 89 | 126 | 124.751 bytes | 2.115 ms |
+| Local fixture | 9 | 5 | 6,114 bytes | 174 ms |
+| This repository (policy-filtered) | 89 | 126 | 124,751 bytes | 2,115 ms |
 
-Conferidos schema v2, ausência do campo `content` nas entradas do inventário, exclusão de `.env` e existência de ambas as pontas de todas as arestas. O número de arquivos corresponde à política do scanner, não a todos os arquivos no disco. Estes valores foram capturados antes de concluir a documentação desta rodada.
+Verified v2 schema output, absence of `content` fields in inventory entries, `.env` exclusion, and valid endpoints for every edge.
 
-### F3/F4 — oráculos controlados
+### F3/F4 — Controlled Oracles
 
-- Histórico com renome: frequência 3, churn 2, um renome.
-- Coalteração: um par de arquivos com suporte 2 e probabilidade condicional 1,0 na fixture; limite de massa igual a 1 exclui os dois commits.
-- Cadeia dirigida `a → b → c`: PageRank aproximado 0,18441678 / 0,34117105 / 0,47441217; soma 1, betweenness normalizada de `b` igual a 0,5.
-- Componente de dois nós mais autoaresta: dois componentes cíclicos, caminhos fechados. Modo amostrado em 300 nós: oito origens e resultados finitos.
+- **Rename history:** frequency 3, churn 2, 1 rename recorded.
+- **Co-change:** 1 pair with support 2 and conditional probability 1.0 in the fixture; setting mass-commit limit to 1 excludes both commits.
+- **Directed chain `a → b → c`:** approximate PageRank `0.18441678` / `0.34117105` / `0.47441217` (sum = 1.0); normalized betweenness for `b` = `0.5`.
+- **Two-node cycle + self-loop:** 2 cyclic components with closed witness paths. 300-node sampled mode: 8 deterministic sources, finite results.
 
-### F5 — precisão no corpus
+### F5 — Corpus Precision
 
-| Corpus | Verdadeiros positivos | Falsos positivos | Falsos negativos | Precisão / recall |
+| Corpus | True Positives | False Positives | False Negatives | Precision / Recall |
 | --- | ---: | ---: | ---: | ---: |
-| JS/TS: três tipos de aresta estrutural esperados | 3 | 0 | 0 | 1,0 / 1,0 |
-| Rust: cinco ligações entre arquivos/targets esperadas | 5 | 0 | 0 | 1,0 / 1,0 |
+| JS/TS (3 expected structural edge types) | 3 | 0 | 0 | 1.0 / 1.0 |
+| Rust (5 expected file/target links) | 5 | 0 | 0 | 1.0 / 1.0 |
 
-Contagem por tupla única `(origem, destino, tipo)` no corpus sintético; importações repetidas da mesma tupla são consolidadas. Referências genéricas de arquivos de configuração não entram nessas três categorias JS/TS. São **oito exemplos positivos**, além dos testes negativos e de workspace; não se extrapola precisão de 100% para repositórios arbitrários. Existência de símbolos não foi verificada por compiladores.
+Counted per unique `(source, target, type)` tuple in the synthetic corpus (with additional negative and workspace cases). This does not claim 100% accuracy across arbitrary real-world repositories.
 
-## Problemas encontrados e correções
+## Issues Found and Fixed
 
-1. **Backups SQLite geravam sidecars fora da retenção.** A cópia herdava modo WAL; sua validação somente leitura criava arquivos `-wal`/`-shm` que não eram contados na rotação. Novos backups passam para `journal_mode=DELETE` antes da validação. O teste gera mais de cinco cópias, protege a origem da restauração e verifica o total de arquivos. Sidecars antigos do usuário não foram removidos.
-2. **Pastas com nomes como `__proto__`, `constructor` e `toString` colidiam com propriedades de objetos.** Todos os níveis da árvore agora usam objetos sem protótipo. O teste confere contagem e estrutura desses nomes.
-3. **Destaque de código podia interpretar texto como placeholders e tratar marcadores de comentário dentro de strings incorretamente.** A tokenização agora preserva a sequência original, inclusive NUL/Unicode, sem substituição por placeholders. Testes verificam reconstrução exata e strings com URLs.
-4. **Estado de imagem e ordenação da árvore precisavam de correção.** Prévia de imagem isolada, captura/liberação de ponteiro e estado de arraste; ordenação copia o array antes de ordenar. ESLint passou. Zoom/pan e mudanças de seleção continuam aguardando teste visual.
-5. **Teste de contrato antigo exigia igualdade literal sem campos aditivos.** A comparação foi ajustada para aceitar `parsing`/`evidence`, mantendo a verificação dos valores padrão e do restante do contrato. Expectativas iniciais que confundiam referências de configuração com imports também foram corrigidas; não foi alterada a análise para satisfazer uma expectativa incorreta.
+1. **SQLite backups left WAL sidecars outside retention rotation.** Backups inherited WAL mode, and read-only validation created uncounted `-wal`/`-shm` files. New backups now switch to `journal_mode=DELETE` before validation, verified across >5 rotations while protecting restore sources.
+2. **Folder names like `__proto__`, `constructor`, and `toString` collided with JS object prototypes.** Tree building now uses null-prototype objects at every level, verified by tests.
+3. **Syntax tokenizer could misinterpret placeholder-like text and comment markers inside strings.** Tokenization now preserves original spans verbatim (including NUL/Unicode) without placeholder substitution.
+4. **Image preview drag state and tree sorting mutations.** Image preview now isolates pointer capture/release and drag state; tree sorting copies arrays before mutating.
+5. **Legacy contract tests enforced exact JSON equality without additive fields.** Updated assertions to allow optional `parsing` and `evidence` fields while preserving default checks.
 
-## Como reproduzir
+## How to Reproduce
 
-Na raiz, no terminal PowerShell do VS Code:
+From the repository root in PowerShell:
 
 ```powershell
 .\tests\run-validation.ps1 -Build
 ```
 
-O script interrompe em erro, grava logs em `target/validation/latest` e executa:
+The script stops on failure, writes logs to `target/validation/latest`, and runs:
 
 ```powershell
 cargo fmt --all -- --check
@@ -143,38 +143,28 @@ npm run lint
 npm run build
 ```
 
-As fixtures e bancos temporários são recriados por execução. A suíte requer dependências Cargo já disponíveis para `--offline`. O script não executa instalação do pacote nem aceite visual. Não muda política de execução do PowerShell.
+Note: `git diff --check` (with CRLF handling) also passed on all tracked files.
 
-A verificação `git diff --check` considerando CRLF passou nos arquivos rastreados; não cobre arquivos ainda não rastreados. Formatação Rust foi verificada em todo o workspace.
+### Build Artifacts
 
-### Artefatos de produção
+- Binary: `target/release/beckarepo.exe` (19,596,800 bytes, SHA-256 `1753abac1696437c98e4a7d9172a26926971c3b8c47655670b6ebf5c6d5b95a6`)
+- Installer: `target/release/bundle/nsis/BeckaRepo_1.1.0_x64-setup.exe` (4,402,740 bytes, SHA-256 `a54b5ee95484e068579af45eef127b3ee2c87c4b2030827f52ba690204a9407c`)
+- Non-blocking warnings: macOS `.app` bundle identifier suffix notice and Vite CSS plugin timing notice.
 
-- Executável: `target/release/beckarepo.exe`.
-- Instalador: `target/release/bundle/nsis/BeckaRepo_1.1.0_x64-setup.exe`.
-- `beckarepo.exe` (19596800 bytes), SHA-256 `1753abac1696437c98e4a7d9172a26926971c3b8c47655670b6ebf5c6d5b95a6`.
-- `BeckaRepo_1.1.0_x64-setup.exe` (4402740 bytes), SHA-256 `a54b5ee95484e068579af45eef127b3ee2c87c4b2030827f52ba690204a9407c`.
-- Configuração normal de produção (`com.beckarepo.app`); a identidade isolada foi usada somente no lançamento de validação.
-- Avisos não bloqueantes do build inicial: identificador terminado em `.app` não recomendado no macOS e tempo elevado em plugin de resolução do Vite. Build release Rust inicial concluído em 1 min 24 s; não houve falha na geração do pacote. A continuação também concluiu o build, conforme seu log próprio acima.
+## Follow-up Checklist & Next Deliverable
 
-## Pendências para liberar a próxima etapa
+Remaining items tracked into subsequent passes ([2026-10-28 Visual Validation](../2026-10-28/VALIDACAO_VISUAL.md) and [2026-11-25 Graph Report](../2026-11-25/RELATORIO_GRAFO.md)):
 
-1. Abrir a versão isolada com `npm run tauri -- dev --config tests/validation.tauri.json --no-watch` e selecionar um repositório de testes local com histórico Git.
-2. Confirmar inicialização sem erro de render, árvore/grafo/seleção, busca por `needle`, prévia de código e imagem com zoom/arraste.
-3. Salvar nota/tag e preferência; fechar/reabrir normalmente; conferir persistência e proteção de rascunhos.
-4. Exercitar histórico Git, hotspots, coalteração, ciclos/métricas e evidências F5 na janela, inclusive filtros/paginação/cancelamento.
-5. Validar os diálogos e o acionamento pela interface de restauração, recuperação, reassociação, comparação local/staged e cache Git. As operações internas desses cenários já passaram na continuação automatizada.
-6. Medir pico de memória, latência e legibilidade/frame no grafo denso real. O corpus de 1.000 textos e o limite de 100.000 entradas não validam a renderização do cenário de 85.224 arquivos.
+1. Interactive verification of startup, tree/graph/selection, `needle` search, code preview, and image zoom/pan in `BeckaRepo Validation`.
+2. Persistent tags/notes/preferences across restart and draft protection.
+3. Git history, hotspots, co-change, F4 cycles/metrics, and F5 parsing evidence in the UI.
+4. Dialog-driven DB restore, recovery, reassociation, and local/staged comparison.
+5. Real-world 85,224-file dense graph rendering and timing measurements.
 
-Instalação em máquina limpa, colisões adversariais extensas, todos os tetos agregados, permissões de filesystem e mudanças concorrentes sob carga continuam fora desta rodada. As pendências de produto já listadas no roadmap não são marcadas como concluídas por testes de um subconjunto.
+### Next Planned Slice: Rust `#[path]` Attributes (F5)
 
-### Próxima implementação preparada: F5, atributos Rust `#[path]`
-
-Após fechar os pontos de aceite acima, a próxima entrega deve:
-
-- Extrair o atributo pelo AST e armazenar seu caminho no resumo compacto de declarações, sem reter fonte/árvore sintática.
-- Resolver em `rust_modules.rs` considerando raiz, arquivo comum, `mod.rs` e escopo inline; normalizar e exigir destino dentro do inventário autorizado.
-- Diagnosticar caminho absoluto/escape, destino ausente, atributos conflitantes e `cfg_attr` sem avaliação; não inventar associações.
-- Cobrir módulos aninhados, targets compartilhados com resoluções divergentes, caracteres especiais, mudanças no atributo e invalidação de cache.
-- Incrementar a versão do cache sintático e acrescentar corpus com destinos exatos esperados, antes de iniciar F6 (entidades de pacotes externos/lockfiles).
-
-Esse é o plano de continuação; `#[path]` e F6 **não foram implementados nesta validação**.
+Completed in the follow-up [2026-10-29 F5 Path Report](../2026-10-29/RELATORIO_F5_PATH.md):
+- Extract literal `#[path]` attributes in the AST into compact module summaries.
+- Resolve against root, normal files, `mod.rs`, and inline modules confined to the authorized inventory.
+- Diagnose escapes, missing targets, conflicts, and unevaluated `cfg_attr`.
+- Bump syntax cache version (`syntax-v5`) and add a `rustc`-verified directory corpus before starting F6.

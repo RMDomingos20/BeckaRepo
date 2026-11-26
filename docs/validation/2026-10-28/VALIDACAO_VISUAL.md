@@ -1,39 +1,39 @@
-# Validação visual F0–F5 — 28/10/2026
+# Visual Validation F0–F5 — 2026-10-28
 
-Continuação do [relatório automatizado](../2026-10-27/RELATORIO_F0_F5.md). O acesso por Computer Use funcionou após o reinício informado pelo usuário. Ensaios na janela nativa **BeckaRepo Validation**, configuração `tests/validation.tauri.json`, WebView2, 1280 × 800. Banco exclusivo `com.beckarepo.validation`; nenhuma restauração no banco de produção.
+Follow-up to the [automated validation report (2026-10-27)](../2026-10-27/RELATORIO_F0_F5.md). Interactive testing ran in the isolated native **BeckaRepo Validation** window (`tests/validation.tauri.json`, WebView2, 1280 × 800) against the isolated `com.beckarepo.validation` SQLite database without touching production data.
 
-## Evidências observadas
+## Observed Behavior
 
-| Fluxo | Resultado observado |
+| Workflow | Observed Result |
 | --- | --- |
-| Inicialização e seleção nativa de pasta | Tela inicial sem erro; seleção de `target/validation/ui-repo`; progresso de análise e transferência; inventário de 9 arquivos e 5 conexões. `.env` ausente. |
-| Árvore e detalhes | Expansão de `src`, seleção de `alpha.rs`; importação de beta e consumidores beta/lib. |
-| Código sob demanda | Prévia exibiu `use crate::beta::Beta;`, `pub struct Alpha;` e comentário do segundo commit. |
-| Grafo local | Três nós (alpha, beta, lib) e relações direcionadas visíveis; sem crash. |
-| Anotações | Nota `Validação visual 28/10: nota persistente.` e tag `validacao-visual` salvas; botões de salvar/descartar desabilitados e mensagem de dados salvos. |
-| Rascunhos | Atualizar foi bloqueado enquanto havia edição não salva. Encontrado aviso obsoleto após salvar; correção separa esse aviso dos erros de carregamento e encerra-o com a sessão de rascunhos. Reteste registrado abaixo quando concluído. |
-| Histórico Git | Branch validation, HEAD `148f8032103b`, dois commits, churn 3 (+3/−0), conteúdo local idêntico ao índice. |
-| Hotspots | Nove arquivos; alpha/beta com dois commits e churn 3; um registro excluído pela política. |
-| Coalteração | Suporte mínimo alterado de 3 para 2; um par alpha/beta, suporte 2, probabilidades 100% em ambas as direções. Grafo opcional mostrou os dois nós ligados por linha tracejada. |
-| Métricas F4 | Nove nós, cinco arestas, PageRank convergiu em 36 iterações, resíduo 8,593e-9; alpha/beta com grau de entrada 2 e saída 1. Cruzamento apresentou churn 3 e dois commits. |
-| Ciclos | Um componente cíclico com dois arquivos; expansão mostrou alpha → beta → alpha. |
-| Busca textual | `needle`: um resultado README.txt; 9/9 arquivos percorridos, oito textos, um asset sem pesquisa textual, zero erros/alterações. Nó de resultado visível. |
-| Persistência | Após reabrir o processo e selecionar a mesma pasta, nota/tag foram recuperadas. Mudança para inglês, fechamento pelo botão da janela e novo lançamento mantiveram o idioma inglês. |
-| Reteste de rascunhos | Edição da nota, tentativa de Atualizar, bloqueio com aviso, Salvar: aviso desapareceu imediatamente e status voltou a dados salvos. |
-| Evidências F5 | Painel expandido mostrou syntax-v4, Cargo.toml, target validation_demo/lib, raiz src/lib.rs, contexto crate::alpha e import crate::beta::Beta → src/beta.rs, linha 1, bytes [0,22). |
-| Imagem | Carregamento de preview.png, ampliação por roda e arraste funcionaram. Encontrada seleção azul indevida durante o arraste; corrigida com userSelect:none e preventDefault no pointerdown. Reteste ampliou e moveu a imagem sem seleção azul. Ao sair e voltar à prévia, enquadramento reiniciado. |
-| Backup nativo | Botão Criar backup gerou `com.beckarepo.validation/backups/beckarepo-1793211592254095200.sqlite`; caminho mostrado no status. Seleção dessa cópia abriu a confirmação final de restauração, aguardando autorização pontual exigida pelo controle de computador. |
-| Restauração autorizada | Após confirmação explícita do usuário, Sim executou a restauração: WebView recarregada na tela inicial, preferência retornou de inglês para português. Backup de segurança adicional presente no diretório. Banco com.beckarepo.app não foi usado. |
-| Cancelamento sob carga | Abertura de Gaby-CMU-master, cancelamento durante leitura e retorno à tela inicial sem mensagem de erro; nova seleção e análise permitidas. |
+| Startup & native folder picker | Initial screen loaded cleanly; selected `target/validation/ui-repo`; analysis and batched transfer completed with 9 files and 5 edges (`.env` excluded). |
+| Tree & details panel | Expanded `src` and selected `alpha.rs`; showed outbound import to `beta` and inbound consumers `beta`/`lib`. |
+| On-demand code view | Preview rendered `use crate::beta::Beta;`, `pub struct Alpha;`, and commit comments. |
+| Local neighborhood graph | Rendered 3 nodes (`alpha`, `beta`, `lib`) and directed edges without errors. |
+| Annotations | Saved note `Validação visual 28/10: nota persistente.` and tag `validacao-visual`; save/discard buttons disabled cleanly and status updated to saved. |
+| Draft guard | Refresh was blocked while edits remained unsaved. Fixed a stale warning that persisted after saving by decoupling it from load errors and clearing it with the draft session; re-verified below. |
+| Git history | Branch `validation`, HEAD `148f8032103b`, 2 commits, churn 3 (+3/−0), local file matching index. |
+| Project hotspots | Listed 9 files; `alpha`/`beta` showed 2 commits and churn 3; 1 policy-excluded path flagged. |
+| Co-change | Lowered minimum support from 3 to 2; displayed `alpha`/`beta` pair with support 2 and 100% conditional probability in both directions. Overlay rendered the two nodes linked by a dashed edge. |
+| F4 structural metrics | 9 nodes, 5 edges; PageRank converged in 36 iterations (residual `8.593e-9`); `alpha`/`beta` showed in-degree 2, out-degree 1. Combined Git view showed churn 3 and 2 commits. |
+| Cycles | Found 1 cyclic component of 2 files; expanding revealed `alpha → beta → alpha`. |
+| Text search | Query `needle` matched `README.txt` (9/9 files scanned, 8 text files, 1 non-text asset, 0 errors/changes). Search result node highlighted in graph. |
+| Persistence across restart | Reopening the app and selecting the same folder restored the saved note and tag. Switching UI language to English, closing, and relaunching preserved the English preference. |
+| Draft guard re-test | Edited note, attempted Refresh (blocked with warning), clicked Save: warning cleared immediately and status returned to saved. |
+| F5 parsing evidence | Expanded panel displayed `syntax-v4`, `Cargo.toml`, target `validation_demo/lib`, root `src/lib.rs`, context `crate::alpha`, and import `crate::beta::Beta → src/beta.rs` (line 1, bytes `[0,22)`). |
+| Image preview | Loaded `preview.png`; mouse-wheel zoom and pan worked. Fixed accidental blue text-selection highlight during drag using `userSelect: none` and `preventDefault` on `pointerdown`; re-tested cleanly. |
+| Native backup | Clicking **Create backup** wrote `com.beckarepo.validation/backups/beckarepo-1793211592254095200.sqlite` and displayed its path. Selecting it opened the confirmation prompt. |
+| Database restore | Confirmed restore reloaded WebView to the home screen and reverted language preference from English back to Portuguese (with an extra safety backup created in the directory). Production DB `com.beckarepo.app` remained untouched. |
+| Cancellation under load | Opened `Gaby-CMU-master`, triggered Cancel during scanning, and returned cleanly to the home screen with no errors; subsequent folder selection worked normally. |
 
-Os resultados acima foram lidos na interface real por captura visual e árvore de acessibilidade. Não são inferências a partir dos testes Rust. Capturas foram exibidas durante a execução, sem criação de arquivos de screenshot neste relatório.
+All results above were observed directly in the running native WebView window rather than inferred from unit tests.
 
-Nas 60 amostras de processos da sessão, o maior conjunto de trabalho observado do processo BeckaRepo foi de 90,2 MiB. A leitura abrange apenas o processo do aplicativo e os instantes amostrados.
+Across 60 sampled process intervals during the session, peak working set for the BeckaRepo process reached **90.2 MiB**.
 
-## Situação
+## Status & Remaining Checks
 
-**Aceite visual ainda parcial.** A restauração autorizada foi executada e o idioma restaurado; falta reabrir as anotações para conferir seu conteúdo após essa restauração. Recuperação de corrupção, reassociação e paginação real com múltiplas páginas ainda precisam de aceite pela interface. O cancelamento sob carga passou. A segunda análise de Gaby-CMU-master foi observada durante a leitura, sem confirmação visual do grafo completo: legibilidade do grafo grande, frames e memória durante sua renderização continuam pendentes. Os testes automatizados anteriores dessas operações permanecem documentados separadamente.
+**Interactive acceptance remained partial at this milestone.** After database restore, reopening the project to inspect restored annotation text, UI-driven corrupted DB recovery, folder reassociation dialogs, multi-page pagination, and full rendering benchmarks on the 85,224-file repository (`Gaby-CMU-master`) remained open (later tested in [2026-11-25 Graph Report](../2026-11-25/RELATORIO_GRAFO.md)).
 
-Após as duas correções visuais, ESLint, build de produção da interface e os cinco testes JavaScript passaram (geometria isolada: 108 ms; não é tempo de frame). Nenhuma lógica Rust foi alterada nesta continuação.
+Following the two UI fixes (draft warning state and image drag selection), ESLint, frontend production build, and all 5 JavaScript tests passed (isolated geometry test: 108 ms). No Rust code was modified in this pass.
 
-Em 29/10/2026, o usuário pediu explicitamente para avançar à próxima parte. A implementação de `#[path]` Rust prosseguiu conforme esse pedido, preservando as pendências visuais acima. Isso não converte os ensaios pendentes em aprovados. Continuação: [relatório de F5 — atributos de caminho](../2026-10-29/RELATORIO_F5_PATH.md).
+Next milestone: [F5 Rust `#[path]` Attribute Report](../2026-10-29/RELATORIO_F5_PATH.md).

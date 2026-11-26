@@ -1,66 +1,58 @@
-# F5 — resolução Rust de atributos de caminho
+# F5 — Rust `#[path]` Attribute Resolution (2026-10-29)
 
-Data: 29/10/2026. Continuação autorizada pelo pedido de avançar à próxima parte. A entrega executa a próxima fatia registrada no roadmap: atributos `#[path]`. F6 ainda não foi iniciada.
+Follow-up implementing the next roadmap slice after the [2026-10-28 visual check](../2026-10-28/VALIDACAO_VISUAL.md): literal `#[path]` module attribute resolution for Rust. External package mapping (F6) remained unstarted at this stage.
 
-## Resultado funcional
+## Functional Summary
 
-Declarações como `#[path = "../shared/worker.rs"] mod worker;` agora apontam para o arquivo explícito, desde que ele pertença ao inventário permitido. O índice também acompanha redirecionamentos de módulos inline e o diretório dos módulos filhos. Imports com `crate`, `self` e `super` usam a árvore lógica do target, independentemente do nome físico do arquivo.
+Declarations such as `#[path = "../shared/worker.rs"] mod worker;` now resolve to the explicit target file as long as it lies within the authorized repository inventory. The module index also tracks inline module redirections and resolves child modules relative to the redirected directory. `crate`, `self`, and `super` imports continue following the logical target module tree regardless of physical file paths.
 
-O painel existente de evidências recebe o caminho explícito na regra de resolução. O cache usa `syntax-v5`: mudar o atributo reconstrói o índice e elimina ligações obsoletas. Não houve alteração do contrato JSON/SQLite nem inclusão de dependências.
+The **Parsing & Evidence** panel displays the explicit path rule. Cache versioning moved to `syntax-v5`, so modifying a `#[path]` attribute rebuilds the module index and clears stale links. No JSON/SQLite schema changes or new dependencies were introduced.
 
-Arquivos alterados nesta entrega: `syntax.rs`, `rust_modules.rs`, `parser.rs` e o novo corpus `tests/path_attributes.rs`, dentro de `crates/beckarepo-core`, além da documentação. As correções visuais de rascunhos e arraste de imagens da rodada anterior foram preservadas.
+Modified files: `syntax.rs`, `rust_modules.rs`, `parser.rs`, and the new integration suite `tests/path_attributes.rs` in `crates/beckarepo-core`, alongside documentation. The draft-warning and image-drag UI fixes from the previous pass were preserved.
 
-## Como foi validado
+## Validation
 
-Os testes usam entradas sintéticas com destinos esperados explicitamente e diretórios temporários exclusivos. O teste incremental percorre o scanner real, altera um atributo e analisa novamente. O corpus de diretórios é compilado por `rustc --edition=2021 --crate-type=lib --emit=metadata`; não executa o programa nem scripts de terceiros. Compilar esse corpus confirma que o layout de módulos é aceito pelo compilador; as asserções do analisador conferem o conjunto exato de 16 ligações.
+Tests use synthetic inputs with explicit expected targets in isolated temporary directories. Incremental tests run the real scanner, mutate a `#[path]` attribute on disk, and re-scan. The directory layout corpus is compiled with `rustc --edition=2021 --crate-type=lib --emit=metadata` (without executing any analyzed code) to confirm layout validity against the Rust compiler while verifying the exact set of 16 expected edges.
 
-| Teste novo | Verificação |
+| New Test | Verified Scope |
 | --- | --- |
-| Diretórios e rustc | Raiz, arquivo comum, mod.rs, módulos inline/redirecionados, filhos de arquivo carregado por path, raw strings, Unicode, espaços, comentários e identificador raw. Um arquivo alternativo com valor diferente detecta escolha incorreta do diretório filho. |
-| Caminhos inválidos | Escape da raiz, absoluto, unidade Windows, destino ausente, atributo duplicado, cfg_attr, valor calculado, literal vazio/com escapes e inclusão recursiva não geram arestas falsas. |
-| Contextos compartilhados | O mesmo fonte pertence a dois targets; resolução divergente de um import é diagnosticada, sem escolher um destino. |
-| Ambiguidade inline | Módulos duplicados, condição não avaliada e atributos internos não deixam descendentes contornar o bloqueio. |
-| Sem Cargo | Uma declaração path não recebe o arquivo convencional como fallback. |
-| Cache incremental | Scan sem alteração reutiliza resultados; troca de a.rs para b.rs remove o destino antigo e invalida relações dependentes. |
-| Raiz personalizada | Entrada fora de src, módulo físico redirecionado e imports crate/super mantêm os seis destinos esperados. |
+| Directories & `rustc` | Crate root, standard files, `mod.rs`, redirected inline modules, children of `#[path]`-loaded files, raw strings, Unicode, spaces, comments, and `r#` raw identifiers. Includes decoy files to catch wrong child-directory resolution. |
+| Invalid paths | Root escapes, absolute paths, Windows drive letters, missing targets, duplicate attributes, `cfg_attr`, computed expressions, empty/escaped literals, and recursive inclusions produce no false edges. |
+| Shared contexts | Shared source belonging to two targets diagnoses divergent resolution instead of guessing one. |
+| Inline ambiguity | Duplicate modules, unevaluated conditions, and inner attributes prevent descendants from bypassing blocks. |
+| Without Cargo | A `#[path]` declaration does not silently fall back to conventional file paths. |
+| Incremental cache | Unchanged re-scans reuse results; changing `a.rs` to `b.rs` removes the old target and invalidates dependent edges. |
+| Custom root | Crate entry outside `src/`, physically redirected module, and `crate`/`super` imports preserve all 6 expected targets. |
 
-A rodada completa passou: **47 testes Rust** (21 host, 15 fases/pipeline, 7 path, 2 contrato, 2 CLI) e **5 testes JavaScript**, sem falhas ou testes ignorados. Os testes de host voltaram a usar bancos SQLite e repositórios Git isolados. O banco de produção não foi restaurado nem migrado nesta entrega.
+The full suite passed: **47 Rust tests** (21 host, 15 phases/pipeline, 7 path attributes, 2 contract, 2 CLI) and **5 JavaScript tests**, with zero failures or skipped cases. Host tests used isolated SQLite databases and Git repositories.
 
-Medições auxiliares desta execução: o ensaio F0/F1 processou 44.003.000 bytes de fontes e gerou snapshot de 397.865 bytes; scan inicial 5.737 ms e incremental 1.732 ms. O ensaio geométrico isolado contabilizou 85.224 nós, 154 marcas gerais e 42 nós na região ampliada, em 112 ms, com pico do processo Node de 96.748 KiB. Essas medidas não representam FPS, renderização Canvas ou memória do aplicativo desktop.
+Auxiliary benchmarks from this run: the F0/F1 corpus (44,003,000 source bytes) produced a 397,865-byte snapshot in 5,737 ms (initial) and 1,732 ms (incremental). The isolated geometry check processed 85,224 nodes (154 overview markers, 42 zoomed nodes) in 112 ms with 96,748 KiB peak Node RSS (geometry only, not Canvas FPS or desktop RAM).
 
-## Compilação e entrega
+## Build & Artifacts
 
-`tests/run-validation.ps1 -Build` terminou com código 0. A sequência incluiu `cargo fmt --all -- --check`, todos os testes, ESLint completo e `npm run build`. O build produziu a interface, o executável Rust e o instalador NSIS x64, versão 1.1.0. Rust release: 1 min 38 s; instalador: aproximadamente 4,21 MiB. O instalador foi gerado, não instalado.
+`tests/run-validation.ps1 -Build` exited with code `0`, running `cargo fmt --all -- --check`, all Rust and JS tests, full ESLint, and `npm run build` (Rust release build: 1 min 38 s; NSIS x64 installer: ~4.21 MiB). `git diff --check` (CRLF-aware) passed on tracked files.
 
-- Executável: `target/release/beckarepo.exe`.
-- Instalador: `target/release/bundle/nsis/BeckaRepo_1.1.0_x64-setup.exe`.
-- `beckarepo.exe` (19622400 bytes), SHA-256 `3DCE2ED287C086B8FCD9CAE757A8A3ED6D037DE45741D6AB3EBB0912ADE142D7`.
-- `BeckaRepo_1.1.0_x64-setup.exe` (4411308 bytes), SHA-256 `5ED35D2DA85E93D4F552090E61E100ACE506ADD6BAAD8623C4A299750596F624`.
+- Binary: `target/release/beckarepo.exe` (19,622,400 bytes, SHA-256 `3DCE2ED287C086B8FCD9CAE757A8A3ED6D037DE45741D6AB3EBB0912ADE142D7`)
+- Installer: `target/release/bundle/nsis/BeckaRepo_1.1.0_x64-setup.exe` (4,411,308 bytes, SHA-256 `5ED35D2DA85E93D4F552090E61E100ACE506ADD6BAAD8623C4A299750596F624`)
 
-O aviso preexistente do identificador `com.beckarepo.app` para macOS não impediu o build Windows. `git diff --check`, considerando CRLF, passou nos arquivos rastreados. Arquivos novos de Rust foram incluídos na verificação de formatação do workspace.
+## Known Limits & Open Items
 
-## Limites e pendências
+- Only existing `.rs` targets inside the authorized inventory with portable `/` relative paths are resolved.
+- Escaped string literals, computed path values, inner `#![path]`/`#![cfg_attr]`, macros, `cfg`, and Cargo features are not evaluated (inner attributes conservatively block Rust resolution for that file).
+- Links associate files and modules; they do not verify symbol existence/visibility.
+- The corpus is synthetic and does not claim full compiler parity across arbitrary repositories.
+- No new desktop window run was executed specifically for `#[path]` attributes; UI-level items from [2026-10-28](../2026-10-28/VALIDACAO_VISUAL.md) remained open here.
 
-- Apenas destinos `.rs` existentes no inventário; caminhos portáveis relativos com `/`. Nenhum caminho fora da pasta autorizada é aberto pelo resolvedor.
-- Literais com escapes, valores calculados, atributos internos e `cfg_attr` ainda não são interpretados. Atributos internos bloqueiam conservadoramente a resolução do arquivo. Sem target Cargo suportado, a presença de caminho/declaração bloqueada desabilita o fallback Rust daquele arquivo.
-- A resolução associa arquivos e módulos. Não comprova existência/visibilidade de símbolos, não expande macros e não avalia `cfg` ou features.
-- O corpus é sintético e limitado. Não comprova precisão/recall em todos os repositórios, nem equivalência integral à resolução do compilador.
-- Não foi realizada nova interação na janela para estes atributos. O [relatório visual de 28/10](../2026-10-28/VALIDACAO_VISUAL.md) registra os fluxos aprovados e o que falta: conferência das notas após restauração, recuperação/reassociação/paginação pela interface e grafo grande com medições de renderização.
-
-## Reprodução
-
-Na raiz do projeto, com Rust e Node instalados:
+## Reproduction
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/run-validation.ps1 -Build -OutputDirectory target/validation/recheck
 ```
 
-Somente o novo corpus:
+Run only the path-attribute suite:
 
 ```powershell
 cargo test -p beckarepo-core --offline --test path_attributes -- --nocapture
 ```
 
-A suíte depende das ferramentas já usadas pelo projeto: Cargo/rustc, Git e Node. Não requer fork remoto. No teste de confinamento Windows, criação de symlink de arquivo não estava disponível; o teste verificou escape por junction de diretório, conforme registrado no log. O teste imprime o diretório temporário do corpus para inspeção.
-
-Semântica consultada: [Rust Reference — path attribute](https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute). Cobertura atual e limites completos: [ETAPA_F5.md](../../ETAPA_F5.md).
+Reference consulted: [Rust Reference — The `path` attribute](https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute). Full coverage details: [ETAPA_F5.md](../../ETAPA_F5.md).

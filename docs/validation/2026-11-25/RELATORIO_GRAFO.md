@@ -1,46 +1,51 @@
-# Abertura do Gaby-CMU e navegação no grafo
+# Large-Scale Benchmark & Graph Navigation (Gaby-CMU) — 2026-11-25
 
-O conjunto de medição contém 85.224 arquivos e 91.744 conexões. Os ensaios leram a pasta do usuário.
+Measured against the **Gaby-CMU** local benchmark repository containing **85,224 files and 91,744 connections**.
 
-## Motor Rust
+## Rust Engine Scan Performance
 
-O exemplo `profile_scan` mede a varredura com o perfil release. A compilação, a serialização do snapshot, o transporte para a WebView e a renderização ficam fora do cronômetro de varredura. É possível repetir a medição no terminal com:
+The `profile_scan` example measures pure Rust scanning in `--release` mode (excluding compilation, snapshot serialization, WebView IPC transfer, and rendering):
 
 ```powershell
-cargo run --release --offline -p beckarepo-core --example profile_scan -- "D:\caminho\do\repositorio"
+cargo run --release --offline -p beckarepo-core --example profile_scan -- "D:\path\to\repository"
 ```
 
-| Etapa (segundos) | Versão intermediária | Versão final |
+| Stage (seconds) | Intermediate Build | Final Build |
 | --- | ---: | ---: |
-| Inventário | 44,36 | 37,43 |
-| Leitura e índice | 7,60 | 39,95 |
-| Extração de conexões | 262,85 | 149,50 |
-| Conferência de revisões | 36,40 | 9,11 |
-| **Total** | **351,21** | **235,99** |
+| Inventory | 44.36 | 37.43 |
+| Read & index | 7.60 | 39.95 |
+| Connection extraction | 262.85 | 149.50 |
+| Revision verification | 36.40 | 9.11 |
+| **Total** | **351.21** | **235.99** |
 
-Os dois executáveis rodaram em sequência, na mesma pasta, na sessão normal do Windows. A versão intermediária já evitava buscas por nomes inexistentes. A final também compartilha o conjunto de caminhos entre resolvedores e confere revisões em lotes com até quatro tarefas simultâneas. A reabertura incremental reutiliza o índice quando ele segue válido.
+Both builds ran sequentially on the same folder under a standard Windows session. The intermediate build already skipped lookups for nonexistent filenames; the final build additionally shares the path set across resolvers and batches revision checks across up to 4 concurrent tasks. Incremental reopening reuses the valid index when unchanged.
 
-O segundo ensaio levou 32,8% menos tempo. A conferência de revisões teve redução de 75%. Cada medição teve uma única passagem, sem controle do cache de disco. Havia outros trabalhos de compilação e leitura na máquina durante parte do ensaio. A variação nas fases de leitura e extração impede atribuir toda a diferença à alteração de código. Em outra dupla de execuções sob o sandbox, os respectivos totais foram 516,22 s e 408,96 s.
+Total scan time dropped by **32.8%**, and revision verification dropped by **75%**. Because each run was a single pass without controlling OS disk cache (and concurrent compilation/disk activity occurred during parts of the run), phase-level fluctuations reflect disk caching as well as code changes. In a separate paired run inside a sandboxed environment, totals were 516.22 s and 408.96 s.
 
-Medições anteriores de 31/10, em segundos, com 85.224 arquivos, 91.744 conexões e snapshots de 89.381.332 bytes em ambas as execuções.
+Earlier 2026-10-31 measurements (in seconds) on the same 85,224-file / 91,744-edge dataset (89,381,332-byte snapshots):
 
-| Execução | Inventário | Leitura | Análise | Conferência | Varredura total | Serialização |
+| Run | Inventory | Read | Analysis | Verification | Total Scan | Serialization |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Antes | 49,64 | 9,01 | 31,51 | 51,62 | 141,77 | 0,29 |
-| Depois | 24,19 | 6,6 | 26,5 | 22,01 | 79,3 | 0,18 |
+| Before | 49.64 | 9.01 | 31.51 | 51.62 | 141.77 | 0.29 |
+| After | 24.19 | 6.60 | 26.50 | 22.01 | 79.30 | 0.18 |
 
-As quatro varreduras recentes produziram 85.224 arquivos, 91.744 arestas, zero avisos e a mesma assinatura das arestas ordenadas (`cb2308b63c9d8a13`). A extração continua sendo a etapa mais demorada nessa pasta.
+All four recent scans produced identical counts — 85,224 files, 91,744 edges, 0 warnings — and the exact same sorted-edge checksum (`cb2308b63c9d8a13`). Connection extraction remains the primary bottleneck at this scale.
 
-## Interface e manual
+## Desktop UI & Illustrated Manual
 
-Na janela **BeckaRepo Validation**, com o banco de testes e o mesmo comando de desenvolvimento do projeto, o seletor do Windows abriu o Gaby-CMU. A interface passou por leitura, mapeamento e transferência até exibir a árvore com **85.224 arquivos e 91.744 conexões**. Em 25/11, havia um marco de tempo às 18h16min32s, antes do clique de abertura, e a árvore já estava visível às 18h21min13s. Isso dá um limite superior de **4min41s** para essa abertura. O ensaio incluiu o processo Rust, o IPC real e a WebView. O estado do cache do Windows pode afetar novas aberturas.
+In **BeckaRepo Validation** (isolated test DB, dev command), opening `Gaby-CMU` through the native Windows folder picker ran scanning, dependency mapping, and batched IPC transfer until the file tree displayed **85,224 files and 91,744 connections**. Based on timestamps captured before clicking open (`18:16:32`) and once the tree was visible (`18:21:13`), end-to-end opening took under **4 min 41 s** (including Rust engine, live IPC, and WebView rendering, subject to Windows disk cache state).
 
-Na mesma sessão, decorreram **2,0 s** entre o clique em **grafo global** e a observação do contador de 85.224 arquivos na área. Galáxia mostrou 214 grupos por proximidade. Após selecionar Atlas, a janela mostrou os mesmos arquivos em 584 grupos. Nas duas disposições, o modo automático desenhou 1.200 das 91.744 conexões elegíveis na área. O limite mantém os detalhes acessíveis por zoom e seleção.
+In the same session, opening **Global Graph** rendered the 85,224-file counter in **2.0 s** from click:
+- **Galaxy layout** organized nodes into **214 spatial clusters**.
+- **Atlas layout** partitioned the same files into **584 clusters**.
+- In both layouts, Auto edge mode drew **1,200 of 91,744 eligible connections** at overview zoom, keeping full detail accessible via zoom and file selection.
 
-No Edge, o teste abriu a interface compilada com o snapshot real e uma implementação local de teste dos comandos Tauri. A árvore ficou disponível em cerca de 2,1 s depois do clique, com os dados previamente analisados. Foram exercitados Galáxia, Atlas, Pastas e Livre e a abertura do Guia em português. Um grafo pequeno também exercitou Atlas, Clássico, retorno a Arquivos e o Guia em inglês.
+In Microsoft Edge (testing the compiled UI against the real snapshot via a local Tauri command shim), the tree became interactive in ~2.1 s once data was loaded, exercising **Galaxy**, **Atlas**, **Folders**, **Free**, and the Portuguese **Guide** modal. A smaller test graph also verified **Atlas**, **Classic (SVG)**, returning to **Files**, and the English **Guide**.
 
-Galáxia e Atlas calculam posições estáveis. O modo Livre continua usando um Worker para a simulação. A galáxia prioriza vizinhos distintos e dá peso duplo a entradas. Os filtros alteram a conectividade considerada. O atlas separa os grupos por área e ordena os arquivos por caminho. O guia do aplicativo e o README descrevem as escolhas e os símbolos.
+- **Galaxy** and **Atlas** compute deterministic, stable layouts: Galaxy prioritizes distinct neighbors (weighting inbound links 2× and outbound 1×, influenced by active filters), while Atlas allocates proportional group areas sorted by path.
+- **Free** continues delegating force simulation to the Web Worker.
+- Symbols, controls, and layout rules are documented in the in-app Guide ([docs/MANUAL.md](../../MANUAL.md)) and [README.md](../../../README.md).
 
-## Verificações
+## Automated Checks
 
-Passaram os 63 testes Rust, os 19 testes JavaScript, o lint e a compilação do instalador Windows x64. Os testes cobrem a política de arquivos, as revisões, o cancelamento, os limites, os cursores do transporte e a integridade das relações. Os novos casos verificam a posição relativa de arquivos centrais e isolados e a separação de grupos no atlas.
+This pass verified **63 Rust tests**, **19 JavaScript tests**, ESLint, and the Windows x64 NSIS installer build — covering file policy, revision checks, cancellation, limits, batched transport cursors, relation integrity, Galaxy center/periphery placement, and Atlas group separation.
