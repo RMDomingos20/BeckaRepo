@@ -1,35 +1,30 @@
-# F7 — Símbolos e navegação dentro do arquivo
+# F7 — On-Demand Symbols and Intra-File Navigation
 
-Primeira entrega em 30/10/2026, após autorização para avançar além de F6. Piloto para JavaScript/JSX, TypeScript/TSX e Rust. Resolução global de símbolos, tipos e chamadas entre arquivos permanece fora desta entrega.
+Initial pilot implemented 2026-10-30 (`SYM-01`, `SYM-02`, `SYM-04`, `SYM-05`, and partial `SYM-03`) for JavaScript/JSX, TypeScript/TSX, and Rust. Cross-file symbol resolution, type inference, and inter-file call graphs remain outside this phase.
 
-## Uso e identidade
+## Usage & Identity
 
-Selecione um arquivo e abra **Símbolos** no painel de detalhes. A análise roda no núcleo Rust somente ao abrir a aba. Há filtro por nome, complexidade/decisões, chamadas, trecho do símbolo selecionado e grafo expansível. Zoom altera a escala; recolher o grafo preserva a seleção. A seleção principal continua sendo o arquivo.
+Select a supported file and open the **Symbols** tab in the details panel. Extraction runs lazily in Rust (`file_symbols`) only when the tab is opened, offering name filtering, cyclomatic complexity/decision breakdowns, call lists, symbol code previews, and an expandable local symbol graph (preserving selection on collapse and supporting zoom).
 
-O grafo representa até 40 símbolos da página e 80 relações resolvidas. Listas de símbolos/chamadas têm páginas de 40. Chamadas não resolvidas ficam na lista, sem aresta de destino. A prévia usa offsets UTF-8 e limite de 24 KiB, com truncamento indicado.
+- Up to 40 symbols per page and 80 resolved call edges in the graph; unresolved calls stay listed without target edges. Code previews use UTF-8 byte offsets capped at 24 KiB with explicit truncation notices.
+- Identities combine file path, revision, extractor version (`symbols-v1/decisions-v1`), qualified name, and `[startByte, endByte)` span (1-based lines). Covers functions, methods, classes, interfaces, structs, enums, traits, modules, and named types per grammar (anonymous functions include line/column; simple variable-assigned functions use the variable identifier).
+- IDs are revision-scoped and never act as permanent note anchors. `file_symbols` enforces session authorization, bounded file reads, and post-parse revision verification; stale renderer responses are discarded, and no ASTs or sources enter the global snapshot cache.
 
-Cada identidade contém caminho, revisão, versão do extrator, nome qualificado e intervalo `[startByte,endByte)`. Linhas começam em 1. Funções, métodos, classes, interfaces, structs, enums, traits, módulos e tipos nomeados têm cobertura sintática conforme a gramática. Funções anônimas recebem linha/coluna no nome; funções atribuídas a identificador simples usam esse identificador.
+## Call Resolution & Coverage
 
-IDs não são âncoras permanentes de notas. `file_symbols` exige sessão/arquivo autorizados, usa o leitor limitado de F1 e confere a revisão após o parsing. Alteração no disco exige Atualizar. O renderer descarta respostas abandonadas. Fontes/ASTs não entram no snapshot ou cache global; apenas a prévia atual permanece no painel.
+Resolved intra-file edges require a simple-identifier call targeting a unique declared function in an ancestral lexical scope within the same file. Parameters, local bindings, imports, or assignments sharing the same name conservatively suppress resolution across the file. Methods/receivers, qualified paths, dynamic calls, constructors, imports, and external symbols are never guessed by name matching, and syntax errors or partial parses disable resolved call edges.
 
-## Chamadas e cobertura
+These edges reflect observed lexical links, not runtime execution, dynamic dispatch, `cfg`/features, or macros (`impl`/trait methods are not linked as free functions).
 
-A ligação resolvida no piloto é chamada com identificador simples para função declarada, única e em escopo lexical ancestral do mesmo arquivo. Parâmetros, bindings, imports e atribuições com o mesmo nome bloqueiam conservadoramente a resolução em todo o arquivo. Métodos/receptores, qualificações, chamadas dinâmicas, construtores, imports e símbolos externos não são deduzidos por semelhança de nomes. Erro sintático ou extração parcial desabilita as arestas de chamadas resolvidas.
+**"No known local calls"** is explicitly presented as a file-scoped observation: exported items, public visibility, and probable Rust `main` entrypoints are flagged conservatively without dead-code claims or automated deletion hints.
 
-Isso descreve vínculo lexical observado, não execução, despacho ou resultado de compilação. cfg/features, macros e mutações dinâmicas não são avaliados. Funções de impl/trait não recebem ligações como funções livres.
+## Decision Complexity v1
 
-**Sem chamadas locais conhecidas** é uma hipótese restrita ao arquivo. Exports/visibilidade pública e possível main Rust são sinalizados; callbacks e consumidores externos podem existir. Não há diagnóstico automático de código morto nem exclusão de código.
+Each function starts at `1`, adding `+1` for `if`, `for`/`while`/`do` with condition, `catch`, ternary, `switch` `case`, `&&`/`||`, and Rust `?` propagation; Rust `match` adds `arms − 1`. Comments, strings, and macro token trees are ignored. Nested functions are scored independently, and classes/interfaces/types do not receive function complexity scores.
 
-## Complexidade de decisões v1
+The panel lists each contributing rule, line number, and byte span as a transparent versioned syntactic metric.
 
-Cada função começa em 1. Somam 1: if, for/while/do com condição, catch, ternário, case de switch, &&/|| e propagação `?` Rust. Match Rust soma braços menos 1. Comentários, strings e tokens de macros não são decisões. Funções aninhadas são contadas separadamente. Classes/interfaces/tipos não recebem escore de função.
+## Limits & Validation
 
-O painel mostra contribuição, linha e intervalo de cada regra. É uma métrica sintática versionada; não promete equivalência a todos os analisadores de complexidade ou aos caminhos executáveis do compilador.
-
-## Limites e continuação
-
-Menos de 500 KiB de fonte; interrupção cooperativa do parsing em 250 ms e extração em 750 ms; 1.024 símbolos, 2.048 chamadas e 64 escopos. Até 128 evidências de decisões por função e 32 diagnósticos, com contagem de omissões. Resposta serializada até 2 MiB. Os tempos não são garantias rígidas de escalonamento do sistema. Cobertura parcial/linguagem não suportada são estados explícitos.
-
-Sem dependência nova, migração de banco ou execução do código analisado. Implementados SYM-01, SYM-02, SYM-04 e a apresentação conservadora de SYM-05. SYM-03 permanece parcial: há chamadas lexicais locais; resolução completa de usos, tipos, dispatch e relações entre arquivos continua pendente.
-
-Validação: [relatório F6/F7](validation/2026-10-30/RELATORIO_F6_F7.md), com 63 testes Rust/7 JavaScript aprovados, lint/build e observações na janela nativa. O usuário autorizou prosseguir para F8, sem encerrar as limitações de cobertura registradas acima.
+- `< 500 KiB` source cap; cooperative timeouts of 250 ms for parsing and 750 ms for extraction; up to 1,024 symbols, 2,048 calls, 64 scopes, 128 decision evidences per function, 32 diagnostics (+ omitted counts), and 2 MiB serialized response. Unsupported languages and partial parses appear as explicit states.
+- No new dependencies, database migrations, or analyzed-code execution. See [validation/2026-10-30/RELATORIO_F6_F7.md](validation/2026-10-30/RELATORIO_F6_F7.md).

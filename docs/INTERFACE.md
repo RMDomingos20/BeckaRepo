@@ -1,12 +1,15 @@
-# Direção visual
+# Visual Design Direction
 
-Interface de ferramenta de trabalho: superfícies cinza, separadores discretos, texto legível e cores associadas a informação.
+Workspace-first desktop interface: neutral gray surfaces, subtle dividers, legible typography, and purposeful color encoding.
 
-- `src/styles/theme.js`: tokens compartilhados dos painéis e controles.
-- `src/styles/app.css`: controles, foco de teclado, barras de rolagem e redução de movimento.
-- Fonte de sistema na interface; JetBrains Mono local apenas para código.
-- Tela inicial com marca estática, descrição curta e ação principal. Foram removidos rede decorativa animada, física do logotipo, gradientes luminosos e sombras neon.
-- Grafos mantêm cores por categoria em uma paleta menos saturada. Seleção e resultado de busca continuam distintos.
-- Toolbar pode quebrar linhas; modais respeitam a área disponível. Textos dos controles pequenos receberam um piso de 11 px. A interface continua orientada ao desktop.
+- `src/styles/theme.js`: shared color tokens for panels, graph categories, and controls.
+- `src/styles/app.css`: layout rules, keyboard focus rings, custom scrollbars, and `prefers-reduced-motion` support.
+- System UI fonts for chrome and labels; bundled `JetBrains Mono` reserved for source code and byte/line evidence.
+- Clean start screen with static mark, concise description, and primary folder-selection action (decorative background networks, logo physics, glowing gradients, and neon shadows removed).
+- Graph nodes use a restrained category palette with distinct visual states for active selection, hover, and search matches.
+- Responsive toolbar wrapping, viewport-constrained modals, and a `11 px` minimum font size floor for small control labels.
+- User-customizable accent hue (Lilac, Blue, Sage, or custom system color picker with automatic dark-mode contrast adjustment) and row spacing (Comfortable / Compact) persisted in SQLite.
 
-Próximas etapas: componentes compartilhados de botão/campo/modal, migração completa dos estilos inline para CSS, navegação por teclado da árvore e do grafo, contraste medido, redimensionamento observável do Canvas, legendas consistentes e revisão integral dos textos em português/inglês. Tipografia e acessibilidade devem ser avaliadas também no aplicativo Tauri empacotado.
+## Ongoing Polish
+
+- Shared button/input/modal primitives, full migration of remaining inline styles to CSS classes, extended keyboard navigation across tree and graph views, contrast audits, and consistent legend/i18n review across English and Portuguese.

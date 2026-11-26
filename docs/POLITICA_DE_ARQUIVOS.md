@@ -1,51 +1,41 @@
-# Política de arquivos e limites
+# File Policy and Safety Limits
 
-Atualização F1: o scanner de pasta trabalha por arquivo e devolve snapshot v2 sem texto. Leitor sob demanda e busca também aplicam esta política. O limite agregado de 256 MiB abaixo se aplica agora apenas ao pedido JSON v1. Veja [ETAPA_F1.md](ETAPA_F1.md).
+Implemented in `crates/beckarepo-core/src/policy.rs` and shared across the filesystem scanner, on-demand content/media readers, package manifest readers, and `--json` request validator.
 
-Implementação: `crates/beckarepo-core/src/policy.rs`. Compartilhada pelo scanner, leitor de mídia e validador de pedidos do analisador. Não é configurável pela interface nesta etapa.
+## Selection & Sensitive-Path Exclusions
 
-## Seleção
+- **Monorepo packages:** `packages/` is inventoried so monorepo source files are analyzed. Lockfiles (`package-lock.json`, `npm-shrinkwrap.json`, `Cargo.lock`) are read in a dedicated bounded pass for [F6](ETAPA_F6.md) and excluded from the code tree, text search, and file dependency graph (`yarn.lock` and `pnpm-lock.yaml` emit unsupported-format diagnostics).
+- **Sensitive filenames:** Evaluated case-insensitively on every path component across `/` and `\` separators (normalizing trailing spaces/dots):
 
-Atualização F6 (30/10/2026): `packages/` pode conter fontes de workspaces e passou a ser inventariado. Lockfiles npm/Cargo são lidos com limites e confinamento por uma passagem dedicada; não são incluídos na árvore de código, busca textual ou grafo de arquivos. Yarn/pnpm são identificados para diagnóstico de formato não suportado. Detalhes em [ETAPA_F6.md](ETAPA_F6.md).
-
-A política tem duas partes: exclusão de nomes sensíveis e seleção de formatos úteis/diretórios gerados. Formatos reconhecidos e exclusões existentes foram extraídos de `repository.rs` para uma única fonte; a proteção de nomes sensíveis é nova.
-
-A exclusão sensível avalia cada componente do caminho, sem distinguir caixa ASCII, aceitando `/` e `\` como separadores. Espaços e pontos finais são normalizados para a decisão conservadora de exclusão.
-
-| Regra | Exemplos excluídos |
+| Rule | Excluded Examples |
 | --- | --- |
-| `.env`, prefixo `.env.` ou sufixo `.env` | `.env`, `.env.production`, `.env.example`, `production.env` |
-| Diretórios/arquivos de credenciais conhecidos | `.ssh`, `.aws`, `.azure`, `.kube`, `.gnupg`, `.npmrc`, `.pypirc`, `.netrc`, `_netrc`, `auth.json` |
-| Extensões sensíveis | `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.keystore` |
-| Nome exato ou seguido de ponto | `credentials`, `secrets`, `id_rsa`, `id_dsa`, `id_ecdsa`, `id_ed25519`, incluindo `credentials.json` e `secrets.yaml` |
-| Prefixos de conta de serviço | `service-account*`, `service_account*` |
+| `.env`, `.env.*` prefix, or `*.env` suffix | `.env`, `.env.production`, `.env.example`, `production.env` |
+| Known credential files & directories | `.ssh`, `.aws`, `.azure`, `.kube`, `.gnupg`, `.npmrc`, `.pypirc`, `.netrc`, `_netrc`, `auth.json` |
+| Sensitive key/certificate extensions | `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.keystore` |
+| Exact names or prefixes before `.` | `credentials`, `secrets`, `id_rsa`, `id_dsa`, `id_ecdsa`, `id_ed25519` (e.g., `credentials.json`, `secrets.yaml`) |
+| Service account prefixes | `service-account*`, `service_account*` |
 
-**Comportamento deliberadamente conservador:** exemplos, chaves públicas e arquivos legítimos que coincidam com essas regras também ficam excluídos. A pasta raiz selecionada é avaliada; escolher diretamente uma pasta sensível não contorna a proteção. Uma pasta cujo nome seja `secrets`, por exemplo, é excluída por inteiro.
+**Conservatively strict by design:** sample files, public keys, or directories matching these names (such as an entire `secrets/` folder, or selecting a sensitive folder directly as the root) are excluded.
 
-No scanner, a exclusão ocorre antes de abrir o conteúdo. Na leitura sob demanda de texto e mídia, a validação verifica também o destino canônico. O scanner não percorre symlinks. Requests JSON com caminhos sensíveis são rejeitados integralmente antes do parsing do código, inclusive quando seu conteúdo é nulo.
+- Exclusions run **before** opening file contents in the scanner.
+- On-demand text (`read_file_content`) and media (`read_asset`) reads additionally verify canonical path confinement within the opened root.
+- Symlinks are not traversed.
+- JSON `--json` requests containing any sensitive path are rejected before parsing, even when `content` is `null`.
 
-Não é um detector universal de segredos: tokens em `config.js`, nomes diferentes dos conhecidos, hardlinks e alterações concorrentes maliciosas exigem medidas adicionais. A canonicalização seguida de abertura por caminho não elimina toda corrida de filesystem. Bytes fornecidos pelo usuário no stdin já são recebidos antes da validação do JSON; a política não promete apagamento seguro de RAM.
+**Known boundaries:** This policy is a preventive filename/path barrier, not a universal secrets scanner — tokens inside ordinary files (e.g., `config.js`), unlisted filenames, hardlinks, or concurrent filesystem races require external secret scanning, and stdin JSON bytes enter memory prior to validation.
 
-## Orçamentos atuais
+## Resource Limits
 
-| Recurso | Limite | Comportamento |
+| Resource | Limit | Behavior on Exceed |
 | --- | --- | --- |
-| Arquivos aceitos | 100.000 | Falha ao exceder, tanto no scanner quanto no pedido de análise. |
-| Conteúdo por arquivo | Menor que 500 KiB (512.000 bytes) | Scanner mantém nó sem texto; JSON com conteúdo excessivo é rejeitado. |
-| Soma de texto UTF-8 no pedido JSON v1 | Até 256 MiB | Falha explícita ao exceder. |
-| Mídia por prévia | Até 128 MiB | Leitura limitada e erro ao exceder. |
-| Pedido JSON da CLI | Até 320 MiB | Leitura limitada antes da desserialização; demais limites continuam aplicados. |
+| Accepted files | `100,000` | Fails explicitly in both directory scanner and JSON requests. |
+| Text content per file | `< 500 KiB` (512,000 bytes) | Scanner keeps metadata node without text; JSON request fails. |
+| Aggregate UTF-8 text (`--json` v1) | `256 MiB` | Fails explicitly (folder scan drops each file's text after extraction). |
+| Media preview | `128 MiB` | Bounded read; returns an error if exceeded. |
+| CLI `--json` stdin request | `320 MiB` | Bounded read prior to deserialization. |
 
-A contagem de texto considera os bytes UTF-8 resultantes da conversão, inclusive expansão de entradas inválidas. Se o arquivo cresce durante a leitura e atinge o teto, seu prefixo não é enviado ao parser como se fosse conteúdo completo.
+Text byte counting measures post-conversion UTF-8 bytes; if a file grows on disk during reading and hits the cap, partial prefixes are discarded rather than parsed. Additional memory budgets apply to graphs (`500,000` entries / `128 MiB`), packages (`20,000` nodes / `100,000` edges / `64 MiB`), structural analysis (`100,000` nodes / `500,000` edges), and batched IPC (`256` items / `256 KiB` per batch).
 
-Esses números não são limites totais de RAM do processo: JSON, buffers temporários, índices, arestas, D3 e WebView também ocupam memória. Orçamento de arestas, diagnósticos, filas, tempo e cache são próximos trabalhos de F0/F1.
+## Impact on Search & Export
 
-## Efeito sobre busca e exportação
-
-Arquivos excluídos pelo scanner não entram no snapshot, na busca nem na árvore usada na exportação normal. A exportação Markdown atual continua recebendo uma string do renderer; esta mudança não implementa inspeção de segredos em texto arbitrário. O modo CLI com pasta agora imprime snapshot v2 sem conteúdo bruto; `--json` permanece v1.
-
-## Compatibilidade e validação
-
-Contrato de análise JSON v1 mantido; envelope de pasta migrado para v2; a validação ficou mais restritiva para caminhos sensíveis e pedidos grandes. Não há nova dependência nem alteração de arquivos no repositório analisado. Esta preparação não migra preferências, não cria banco SQLite e não executa Git.
-
-Compilação: `cargo check --workspace --offline`. Testes de política e cenários de filesystem estão planejados em `VAL-01` do roadmap e não foram executados nesta etapa. Para usar os fontes atualizados, `npm run dev`; builds antigos precisam ser regenerados com `npm run build`.
+Files excluded by policy never enter snapshots, full-text search, or the file tree exported to Markdown. See [ETAPA_F1.md](ETAPA_F1.md) and [ROADMAP.md](ROADMAP.md) for snapshot v2 and transport details.

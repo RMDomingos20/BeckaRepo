@@ -1,219 +1,219 @@
-# Manual ilustrado do BeckaRepo
+# BeckaRepo Illustrated User Manual
 
-As capturas acompanham um catálogo de livros em TypeScript analisado pelo BeckaRepo. Abra o seu projeto e repita os passos com os caminhos encontrados nele. No Guia do aplicativo, clique em qualquer captura para ampliá-la.
+Screenshots follow a TypeScript bookstore catalog analyzed in BeckaRepo. Open your own project and repeat these steps with the files found in your repository. Inside the in-app **Guide**, click any screenshot to enlarge it.
 
-- [Primeiros passos](#primeiros-passos)
-- [Ler a galáxia](#ler-a-galáxia)
-- [Disposições e grupos](#disposições-e-grupos)
-- [Navegação e filtros](#navegação-e-filtros)
-- [Busca e painel do arquivo](#busca-e-painel-do-arquivo)
-- [Análises](#análises)
-- [Notas, dados e exportação](#notas-dados-e-exportação)
-- [Personalizar a interface](#personalizar-a-interface)
-- [Resolver dúvidas](#resolver-dúvidas)
+- [Getting started](#getting-started)
+- [Reading the galaxy](#reading-the-galaxy)
+- [Layouts and groups](#layouts-and-groups)
+- [Navigation and filters](#navigation-and-filters)
+- [Search and file panel](#search-and-file-panel)
+- [Analysis](#analysis)
+- [Notes, data and export](#notes-data-and-export)
+- [Customize the interface](#customize-the-interface)
+- [Troubleshooting](#troubleshooting)
 
-## Primeiros passos
+## Getting started
 
-**Abra um projeto e siga uma conexão**
+**Open a project and follow a connection**
 
-Comece pela pasta que contém o código. O primeiro mapa mostra como os arquivos dessa pasta se relacionam.
+Start with the folder containing the source files. The map describes relationships within the selected project.
 
-### Abrir a pasta
+### Open a folder
 
-Na janela do BeckaRepo, escolha Selecionar pasta ou arraste o diretório do projeto para a janela. Durante a abertura, o aplicativo inventaria arquivos, mapeia referências, confere revisões e transfere o resultado. Você pode cancelar pela tela de progresso.
+Choose **Select folder** in the desktop app or drag your project directory onto the window. The app inventories files, maps references, checks revisions, and transfers the result. Cancel is available during loading.
 
-### Encontrar um ponto de partida
+### Find a starting point
 
-Na página do projeto, clique em um dos arquivos com mais conexões para abrir seu painel. Na árvore, abra uma pasta ou use Buscar arquivo para localizar um nome ou caminho. Selecione o arquivo para abrir seu painel. Para comparar o projeto inteiro, abra o grafo global.
+On the project page, select one of the most connected files to open its panel. Expand a directory in the tree or use **Search files** to find a name or path. Select a file to open its panel. Open the global graph to explore the whole project.
 
-![Na página da livraria, escolha livro.ts na lista para abrir seu painel, ou Abrir grafo global para situá-lo no projeto.](figuras/pt-projeto.png)
+![On the livraria project page, select livro.ts from the list to inspect it, or open the global graph to locate it in the project.](figuras/en-projeto.png)
 
-Na página da livraria, escolha livro.ts na lista para abrir seu painel, ou Abrir grafo global para situá-lo no projeto.
+On the `livraria` project page, select `livro.ts` from the list to inspect it, or open the global graph to locate it in the project.
 
-### Seguir a primeira ligação
+### Follow one link
 
-No grafo global, use Arquivos e Galáxia. Selecione um arquivo na árvore, clique em Localizar selecionado e escolha Só do arquivo em Conexões. Clique em um vizinho para continuar o percurso.
+Choose **Files** and **Galaxy**. Select a file in the tree, use **Locate selected**, and set **Connections** to **File only**. Select a neighbor to continue exploring.
 
-## Ler a galáxia
+## Reading the galaxy
 
-**O que você vê no mapa**
+**Read the marks on the map**
 
-Cada arquivo é um nó. Cada linha representa uma relação identificada na análise. A posição muda conforme os filtros e a disposição escolhida.
+A node represents a file. A line represents a relationship detected during analysis. Positions depend on your filters and layout.
 
-### Centro e periferia
+### Core and outer ring
 
-Na Galáxia, cada vizinho distinto que aponta para um arquivo vale dois pontos. Cada vizinho para o qual ele aponta vale um. Arquivos mais conectados ocupam o centro. Os isolados ficam na faixa externa. Um arquivo essencial pode estar na periferia se suas relações não forem detectadas.
+**Galaxy** counts two points per distinct incoming neighbor and one per outgoing neighbor. More connected files sit closer to the center. Isolated files occupy the outer ring. A critical file can appear at the edge when its links go undetected.
 
-![No mapa da livraria, procure livro.ts na região central e compare sua vizinhança com a dos arquivos na borda.](figuras/pt-galaxia.png)
+![Find livro.ts near the middle of the bookstore map and compare its neighbors with the files near the edge.](figuras/en-galaxia.png)
 
-No mapa da livraria, procure livro.ts na região central e compare sua vizinhança com a dos arquivos na borda.
+Find `livro.ts` near the middle of the bookstore map and compare its neighbors with the files near the edge.
 
-### Tipos de relação
+### Relation types
 
-Uma importação parte do arquivo que usa a dependência. Uma referência pode indicar um caminho mencionado no texto. Projetos com protótipos ou recursos RSI podem apresentar ligações entre definições, sprites e estados. Abra Filtros e agrupamento para examinar um tipo por vez.
+An import starts at the file that uses a dependency. A reference can indicate a path mentioned in text. Projects with prototypes or RSI resources may also link definitions, sprites, and states. Open **Filters and grouping** to inspect one type at a time.
 
-### Formas e cores
+### Shapes and colors
 
-Em Arquivos, o círculo cheio indica um arquivo conectado. O vazado indica ausência de conexões no filtro atual. O losango marca oito ou mais conexões. As cores ajudam a distinguir tipos de arquivo. Em Pastas, um quadrado abre um diretório.
+A filled circle is a connected file. An outline marks a file without connections in the current filter. A diamond indicates eight or more connections. Color helps distinguish file types. In **Folders**, select a square to open a directory.
 
-## Disposições e grupos
+## Layouts and groups
 
-**Escolha a escala da investigação**
+**Choose the scale of your investigation**
 
-Detalhamento escolhe o que um nó representa. Disposição escolhe onde cada nó aparece.
+**Detail** chooses what a node represents. **Layout** controls where it appears.
 
-### Galáxia, Atlas e Livre
+### Galaxy, Atlas and Free
 
-Use Galáxia para encontrar centros de conectividade. Use Atlas para comparar grupos em blocos proporcionais ao número de arquivos e ordenados internamente por caminho. Livre aproxima arquivos ligados por uma simulação de forças. Até 800 nós, Clássico oferece a visualização em SVG.
+Choose **Galaxy** to find highly connected files. **Atlas** places groups in blocks sized by file count, with files ordered by path. **Free** uses a force simulation to bring linked files together. **Classic** provides an SVG view for up to 800 nodes.
 
-![O mesmo catálogo em Atlas. Compare o espaço ocupado por cada grupo e depois retorne a Galáxia para examinar as ligações.](figuras/pt-atlas.png)
+![The same catalog in Atlas. Compare the space allocated to each group, then switch back to Galaxy to inspect links.](figuras/en-atlas.png)
 
-O mesmo catálogo em Atlas. Compare o espaço ocupado por cada grupo e depois retorne a Galáxia para examinar as ligações.
+The same catalog in **Atlas**. Compare the space allocated to each group, then switch back to **Galaxy** to inspect links.
 
-### Agrupar ou isolar
+### Group or isolate
 
-Abra Filtros e agrupamento. Agrupe por pasta, arquitetura, módulos ou tipo. A profundidade de pasta muda o nível de diretório usado. Arquitetura usa padrões nos caminhos e Módulos usa as conexões. Use o seletor de isolamento para explorar um grupo e volte à opção de ver todo o grafo para sair.
+Open **Filters and grouping**. Group by folder, architecture, module, or type. Folder depth chooses a directory level. Architecture uses patterns in paths. Modules use connections. Use the isolation selector to inspect one group and select the entire graph to return.
 
-### Abrir pastas no mapa
+### Open folders on the map
 
-Escolha Pastas para condensar diretórios. Clique em um quadrado ou abra a lista de pastas para expandir um diretório. O arquivo selecionado permanece separado. O número de uma linha soma as relações do mesmo tipo entre os representantes. As relações internas aparecem na contagem da pasta.
+Choose **Folders** to collapse directories. Select a square or use the folder list to expand it. A selected file stays separate. Each line counts relationships of the same type between representatives. Internal relationships appear in the folder count.
 
-![Em Pastas, um quadrado reúne arquivos de um diretório. Clique nele para revelar o conteúdo mantendo os demais diretórios recolhidos.](figuras/pt-pastas.png)
+![In Folders, a square represents the files in a directory. Select it to reveal its contents while other directories stay collapsed.](figuras/en-pastas.png)
 
-Em Pastas, um quadrado reúne arquivos de um diretório. Clique nele para revelar o conteúdo mantendo os demais diretórios recolhidos.
+In **Folders**, a square represents the files in a directory. Select it to reveal its contents while other directories stay collapsed.
 
-## Navegação e filtros
+## Navigation and filters
 
-**Leia uma ligação em um mapa denso**
+**Follow a link in a dense map**
 
-Aproxime a região de interesse antes de aumentar o número de linhas.
+Zoom into a region before increasing the number of lines.
 
-### Mover e enquadrar
+### Move and fit
 
-Role para aproximar e arraste o fundo para navegar. Enquadrar tudo recupera a visão geral. Com o canvas em foco, use + e − para zoom, setas para mover, Home para enquadrar e Escape para limpar a seleção. Arrastar um arquivo fixa sua posição. Um duplo clique solta o arquivo.
+Scroll to zoom and drag the background to pan. **Fit all** restores the overview. With the canvas focused, use `+` and `−` to zoom, arrow keys to pan, `Home` to fit, and `Escape` to clear the selection. Drag a file to pin it and double-click to release it.
 
-### Escolher as conexões
+### Choose connections
 
-Os filtros de tipo escolhem quais relações entram no mapa. Automáticas limita o desenho na visão geral. Só do arquivo concentra as linhas na seleção. Todas amplia o limite de desenho para até 12 mil linhas. Os contadores distinguem linhas desenhadas e elegíveis na área. Abra Legenda e detalhes no rodapé para consultar esses números.
+Type filters determine which relationships enter the map. **Automatic** limits overview lines. **File only** focuses on a selected file. **All** raises the drawing limit to 12,000 lines. The counters distinguish drawn lines from eligible lines in the viewport. Open **Legend and details** at the bottom to read these counters.
 
-![Com livro.ts selecionado e Só do arquivo ativo, siga uma linha até um consumidor. Limpar seleção permite escolher outro ponto de partida.](figuras/pt-selecao.png)
+![With livro.ts selected and File only active, follow a line to a consumer. Clear the selection to choose another starting point.](figuras/en-selecao.png)
 
-Com livro.ts selecionado e Só do arquivo ativo, siga uma linha até um consumidor. Limpar seleção permite escolher outro ponto de partida.
+With `livro.ts` selected and **File only** active, follow a line to a consumer. Clear the selection to choose another starting point.
 
-### Quando os pontos se juntam
+### When dots merge
 
-Na visão geral, pontos de densidade reúnem arquivos próximos na tela. Passe o cursor para consultar a quantidade ou clique para aproximar. Para chegar a um arquivo específico, selecione-o pela árvore e use Localizar selecionado.
+Overview density dots combine nearby files on screen. Hover for a count or click to zoom. For a particular file, select it in the tree and use **Locate selected**.
 
-![Abra Filtros e agrupamento. O primeiro controle escolhe relações; Agrupar por e Isolar grupo mudam como o conjunto é organizado e exibido.](figuras/pt-filtros.png)
+![Open Filters and grouping. The first control chooses relation types. Group by and Isolate group change how the files are organized and displayed.](figuras/en-filtros.png)
 
-Abra Filtros e agrupamento. O primeiro controle escolhe relações; Agrupar por e Isolar grupo mudam como o conjunto é organizado e exibido.
+Open **Filters and grouping**. The first control chooses relation types. **Group by** and **Isolate group** change how the files are organized and displayed.
 
-## Busca e painel do arquivo
+## Search and file panel
 
-**Investigue o conteúdo e a vizinhança**
+**Inspect content and neighbors**
 
-Buscar arquivo fica acima da árvore e filtra nomes e caminhos. Na aba grafo termo, Buscar no conteúdo procura texto dentro dos arquivos.
+**Search files** above the tree filters names and paths. In the term graph tab, **Search content** looks for text inside files.
 
-### Pesquisar texto
+### Search text
 
-Digite ao menos dois caracteres na busca de conteúdo. Os resultados aparecem com seus vizinhos de contexto. Confira quantos arquivos foram pesquisados, ignorados ou alterados. Quando disponível, carregue a próxima página.
+Enter at least two characters in the content search. Results appear with neighbors for context. Check how many files were searched, skipped, or changed. Load another page when available.
 
-### Inspecionar um arquivo
+### Inspect a file
 
-Use o painel para consultar o resumo, abrir o código ou a prévia e explorar o grafo local. O primeiro nível reúne vizinhos diretos. O segundo ajuda a seguir um passo além. A prévia depende do formato, tamanho e revisão do arquivo.
+Use the file panel for an overview, code or preview, and the local graph. The first hop contains immediate neighbors. The second goes one step further. Preview availability depends on the file format, size, and revision.
 
-![A consulta estante localiza o arquivo e seu teste. Selecione estante.ts e confira o caminho no topo do painel antes de abrir o código.](figuras/pt-arquivo.png)
+![Searching for estante finds both the file and its test. Select estante.ts and check its path at the top of the panel before opening the code.](figuras/en-arquivo.png)
 
-A consulta estante localiza o arquivo e seu teste. Selecione estante.ts e confira o caminho no topo do painel antes de abrir o código.
+Searching for `estante` finds both the file and its test. Select `estante.ts` and check its path at the top of the panel before opening the code.
 
-### Símbolos e histórico
+### Symbols and history
 
-Símbolos apresenta informações reconhecidas pelo analisador para linguagens compatíveis. Histórico depende de um repositório Git e dos commits disponíveis. Se um arquivo mudou no disco desde a abertura, atualize a análise antes de consultar a nova versão.
+**Symbols** shows details recognized for supported languages. **History** uses the local Git repository and available commits. Refresh the analysis if the file has changed on disk.
 
-## Análises
+## Analysis
 
-**Investigue a estrutura e o histórico**
+**Investigate structure and history**
 
-Abra análises para responder perguntas que a posição dos nós, sozinha, não resolve.
+Open the analysis view for questions that a node's position alone cannot answer.
 
-### Estrutura
+### Structure
 
-Consulte centralidade e ciclos para escolher um trecho a investigar. Um ciclo liga arquivos por um percurso que volta ao ponto de partida. Abra os arquivos envolvidos e confira as evidências antes de planejar uma mudança.
+Use centrality and cycle reports to choose a region to investigate. A cycle follows links back to its starting point. Open the files and check the evidence before planning a change.
 
 ### Git
 
-Altere a janela de tempo para investigar frequência de alterações e arquivos que costumam mudar no mesmo commit. A cobertura depende do histórico local. Uma mudança conjunta é uma pista de manutenção, mesmo quando os arquivos não têm uma importação direta.
+Change the time window to explore change frequency and files modified in the same commits. Coverage depends on local history. Co-change can suggest a maintenance relationship even without a direct import.
 
-### Dependências externas
+### External dependencies
 
-Consulte os pacotes reconhecidos nos manifests npm, Cargo e Maven. Filtre o ecossistema e examine consumidores, declarações e evidências. Leia os diagnósticos quando faltar informação de versão ou de resolução.
+Inspect packages recognized in npm, Cargo, and Maven manifests. Filter by ecosystem and examine consumers, declarations, and evidence. Read diagnostics when versions or resolution information are missing.
 
-![Em Dependências externas, localize zod e confira o manifest e a versão declarada. Clique no nome para investigar os arquivos consumidores.](figuras/pt-pacotes.png)
+![Under External dependencies, find zod and check its manifest and declared version. Select the name to investigate its consumers.](figuras/en-pacotes.png)
 
-Em Dependências externas, localize zod e confira o manifest e a versão declarada. Clique no nome para investigar os arquivos consumidores.
+Under **External dependencies**, find `zod` and check its manifest and declared version. Select the name to investigate its consumers.
 
-## Notas, dados e exportação
+## Notes, data and export
 
-**Guarde o contexto da investigação**
+**Keep a record of your investigation**
 
-Use notas para registrar o que descobriu sobre um arquivo e tags para reencontrar assuntos relacionados.
+Write notes on a file and use tags to track related topics.
 
-### Salvar uma anotação
+### Save an annotation
 
-Selecione o arquivo, abra Tags e notas no painel, edite o texto ou as tags e salve. Os dados ficam no SQLite local e são associados à cópia de trabalho e ao caminho. Resolva os rascunhos pendentes antes de trocar de projeto.
+Select a file, expand **Tags and notes** in the file panel, edit the text or tags, and save. The local SQLite database associates annotations with the worktree and path. Resolve pending drafts before switching projects.
 
-![Digite a tag e clique em Adicionar. Escreva a observação e clique em Salvar para guardar a edição que aparece na figura.](figuras/pt-notas.png)
+![Enter a tag and select Add. Write the note, then save the draft shown here.](figuras/en-notas.png)
 
-Digite a tag e clique em Adicionar. Escreva a observação e clique em Salvar para guardar a edição que aparece na figura.
+Enter a tag and select **Add**. Write the note, then save the draft shown here.
 
-### Importar notas ou mover o projeto
+### Import notes or move a project
 
-Com o projeto de destino aberto, Configurações e dados permite importar notas JSON por caminho relativo, preservando anotações existentes. Cada importação aceita até 2.000 entradas e 4 MiB. Se você moveu a pasta, confira a localização anterior antes de reassociá-la.
+With the target project open, data settings can import JSON notes by relative path and preserve existing annotations. Each import accepts up to 2,000 entries and 4 MiB. If you moved the folder, check the previous location before reassociating it.
 
-### Exportar ou fazer backup
+### Export or back up
 
-Projeto → Exportar gera um Markdown da estrutura de pastas e arquivos. Em Projeto → Configurações e dados, abra Dados locais para criar ou restaurar um backup. A restauração substitui o banco local pelo backup escolhido. Confira o arquivo antes de confirmar.
+**Project → Export** writes the folder and file structure to Markdown. Open **Project → Settings and data → Local data** to create or restore a backup. Restoring replaces the local database with the selected backup. Check the file before confirming.
 
-## Personalizar a interface
+## Customize the interface
 
-**Ajuste a leitura ao seu monitor**
+**Adjust the workspace to your screen**
 
-Na tela inicial, abra Configurações e dados. Com um repositório aberto, a mesma janela fica no menu Projeto.
+Open **Settings and data** on the start screen. With a repository open, find the same window in the **Project** menu.
 
-### Escolher uma cor
+### Choose a color
 
-Em Aparência, experimente Lilás, Azul ou Sálvia. Para usar outra tonalidade, clique na amostra de Cor personalizada e escolha a cor no seletor do sistema. Confira a mudança na aba ativa e na seleção do grafo. Tons escuros ganham luminosidade para manter o texto legível.
+Under **Appearance**, try Lilac, Blue, or Sage. For another hue, select the **Custom color** swatch to open the system picker. Check the active tab and graph selection. Dark colors are lightened to keep labels readable.
 
-![A amostra mostra a cor escolhida. O controle de espaçamento logo abaixo ajusta o tamanho das linhas e dos controles.](figuras/pt-aparencia.png)
+![The swatch shows your chosen color. Spacing below it adjusts the height of rows and controls.](figuras/en-aparencia.png)
 
-A amostra mostra a cor escolhida. O controle de espaçamento logo abaixo ajusta o tamanho das linhas e dos controles.
+The swatch shows your chosen color. **Spacing** below it adjusts the height of rows and controls.
 
-### Ver mais arquivos na árvore
+### Fit more files in the tree
 
-Em Espaçamento, escolha Compacto para reduzir a altura das linhas do explorador e dos controles do mapa. Volte a Confortável para aumentar a área de clique. O botão do explorador à esquerda da barra recolhe a árvore quando você precisa de mais espaço horizontal.
+Choose **Compact** under **Spacing** for shorter explorer rows and map controls. Choose **Comfortable** for larger click targets. Use the explorer button at the left of the toolbar to fold the tree when you need horizontal space.
 
-### Recuperar o padrão
+### Restore the defaults
 
-Restaurar aparência original repõe o lilás e o espaçamento confortável. As preferências do aplicativo desktop ficam no banco local e voltam ao abrir o BeckaRepo. A restauração de um backup também recupera as preferências daquele banco.
+**Reset appearance** restores lilac and comfortable spacing. The desktop app saves preferences in its local database so they return on launch. Restoring a backup also restores the preferences saved in that database.
 
-## Resolver dúvidas
+## Troubleshooting
 
-**Quando o resultado surpreende**
+**When the result is unexpected**
 
-Use a árvore e os contadores para distinguir um problema de navegação de uma limitação da análise.
+Use the tree and counters to distinguish a navigation issue from a limitation of analysis.
 
-### O arquivo está na árvore, mas não o vejo no mapa
+### A file is in the tree but missing from the map
 
-Volte a Arquivos, remova o isolamento e enquadre tudo. Selecione o caminho pela árvore e use Localizar selecionado. Reative os tipos de conexão relevantes se o arquivo aparecer isolado.
+Switch to **Files**, clear isolation, and fit the entire graph. Select its path in the tree and use **Locate selected**. Enable the relevant connection types if the file appears isolated.
 
-### Uma relação esperada não aparece
+### An expected link is missing
 
-Confirme primeiro o filtro de tipos e o modo de desenho. Depois confira o código. Referências dinâmicas, linguagens parcialmente suportadas e caminhos ambíguos podem deixar relações sem resolução.
+Check the type filters and drawing mode, then inspect the code. Dynamic references, partially supported languages, and ambiguous paths can leave links unresolved.
 
-![Expanda Legenda e detalhes. Compare as conexões desenhadas com as elegíveis na área antes de concluir que uma ligação está ausente.](figuras/pt-legenda.png)
+![Expand Legend and details. Compare drawn links with the eligible links in the viewport before concluding a connection is missing.](figuras/en-legenda.png)
 
-Expanda Legenda e detalhes. Compare as conexões desenhadas com as elegíveis na área antes de concluir que uma ligação está ausente.
+Expand **Legend and details**. Compare drawn links with the eligible links in the viewport before concluding a connection is missing.
 
-### A abertura está demorada
+### Opening takes a long time
 
-Observe a etapa de progresso. Projeto → Atualizar reaproveita resultados válidos da sessão e reconcilia mudanças no disco. Depois da abertura, Legenda e detalhes → Desempenho do grafo informa o custo do desenho. Em mapas densos, use Pastas ou Só do arquivo para reduzir a quantidade de elementos visíveis.
+Check the current loading stage. **Project → Refresh** reuses valid results from the current session and checks changes on disk. After loading, **Legend and details → Graph performance** reports drawing cost. Use **Folders** or **File only** to reduce visible detail.

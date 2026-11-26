@@ -20,7 +20,7 @@ cargo run --release --offline -p beckarepo-core --example profile_scan -- "D:\pa
 
 Both builds ran sequentially on the same folder under a standard Windows session. The intermediate build already skipped lookups for nonexistent filenames; the final build additionally shares the path set across resolvers and batches revision checks across up to 4 concurrent tasks. Incremental reopening reuses the valid index when unchanged.
 
-Total scan time dropped by **32.8%**, and revision verification dropped by **75%**. Because each run was a single pass without controlling OS disk cache (and concurrent compilation/disk activity occurred during parts of the run), phase-level fluctuations reflect disk caching as well as code changes. In a separate paired run inside a sandboxed environment, totals were 516.22 s and 408.96 s.
+Total scan time dropped by **32.8%**, and revision verification dropped by **75%**. Because each run was a single pass without controlling OS disk cache (and concurrent compilation/disk activity occurred during parts of the run), phase-level fluctuations reflect disk caching as well as code changes. In a separate restricted-I/O test run, totals were 516.22 s and 408.96 s.
 
 Earlier 2026-10-31 measurements (in seconds) on the same 85,224-file / 91,744-edge dataset (89,381,332-byte snapshots):
 

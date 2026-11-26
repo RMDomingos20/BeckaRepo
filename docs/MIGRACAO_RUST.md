@@ -1,81 +1,64 @@
-# Migração para Rust
+# Rust Migration Overview
 
-> Evolução em 26/10/2026: [F1](ETAPA_F1.md) agora inclui transporte em lotes e atualização incremental; [F2](ETAPA_F2.md) implementa SQLite, tags/notas e backups. Pendências abaixo refletem também o histórico da migração e devem ser lidas junto ao [roadmap atual](ROADMAP.md).
+> Historical migration guide for the move from Electron/JS to Tauri 2 and Rust (`beckarepo-core` + `src-tauri`). For phase-by-phase details and current capabilities, see [ROADMAP.md](ROADMAP.md) and [ETAPA_F1.md](ETAPA_F1.md)–[ETAPA_F8.md](ETAPA_F8.md).
 
+## Current Architecture
 
-## Estado atual
-
-F1 implementada: scanner por arquivo, snapshot v2 sem texto, prévia sob demanda e busca Rust paginada. Veja [ETAPA_F1.md](ETAPA_F1.md) para limites, compatibilidade e pendências.
-
-O aplicativo desktop usa **Tauri 2 e Rust**. Electron, preload, Web Worker e o motor de análise JavaScript foram removidos. Não existe fallback de análise em JavaScript.
+The desktop application runs on **Tauri 2 and Rust**. Electron, preload scripts, the legacy JS analyzer Worker, and browser-side directory readers have been completely removed with zero JavaScript analysis fallback.
 
 ```text
-React/D3 → analysisClient → comandos Tauri → beckarepo-core
-                                           ├─ varredura de diretórios
-                                           ├─ leitura e índice de referências
-                                           └─ parser, relações e estatísticas
+React/D3 → analysisClient → Tauri IPC commands → src-tauri + beckarepo-core
+                                                   ├─ filesystem scanning & policy
+                                                   ├─ syntax parsing & resolution
+                                                   ├─ package, symbol & Git analysis
+                                                   ├─ structural metrics & SQLite
+                                                   └─ batched snapshot & preview I/O
 ```
 
-A interface continua em React/D3: árvore, gráficos SVG/Canvas, clustering visual, pesquisa no conteúdo já carregado e preferências. O executável, os diálogos de pasta/salvamento, a sessão de arquivos e o motor de análise são Rust. Não é uma reescrita da interface em uma biblioteca gráfica Rust.
+React and D3 handle UI state, tree/panel layout, SVG/Canvas/Dense Canvas rendering, Web Worker force layout, and user interaction. All disk access, native dialogs, session confinement, SQLite persistence, Git queries, and analysis run in Rust.
 
-## Organização
+## Core Layout
 
-| Caminho | Responsabilidade |
+| Path | Responsibility |
 | --- | --- |
-| `crates/beckarepo-core/src/lib.rs` | Contrato JSON v1 e validação de caminhos/arestas. |
-| `crates/beckarepo-core/src/parser.rs` | Índices e extração heurística de imports e referências. |
-| `crates/beckarepo-core/src/analysis.rs` | Grafo, relações estruturais, deduplicação e estatísticas. |
-| `crates/beckarepo-core/src/repository.rs` | Varredura, exclusões, leitura limitada, progresso e confinamento de caminhos. |
-| `crates/beckarepo-core/src/bin/beckarepo-cli.rs` | Análise em terminal, sem React ou Node. |
-| `src-tauri/src/main.rs` | Host desktop, comandos IPC, diálogo nativo, cancelamento, mídia e exportação. |
-| `src-tauri/tauri.conf.json` | Janela, CSP, build e instalador NSIS. |
-| `src/services/analysisClient.js` | Transporte IPC e adaptação dos dados para a interface. |
+| `crates/beckarepo-core/src/lib.rs` | Public schema types, validation, and contract version (`SCHEMA_VERSION`). |
+| `crates/beckarepo-core/src/policy.rs` | Shared file limits, exclusions, and sensitive-filename blocking. |
+| `crates/beckarepo-core/src/repository.rs` | Bounded filesystem walk, revisions, incremental snapshots, and search. |
+| `crates/beckarepo-core/src/parser.rs` & `syntax.rs` | Tree-sitter syntactic parsing (JS/TS/Rust) and heuristic regex extraction. |
+| `crates/beckarepo-core/src/web_resolution.rs` | `tsconfig`/`jsconfig` (`paths`, `baseUrl`, `extends`) resolution. |
+| `crates/beckarepo-core/src/cargo_resolution.rs` & `rust_modules.rs` | Cargo manifests/targets/workspaces, logical `mod` trees, and `#[path]` attributes. |
+| `crates/beckarepo-core/src/packages.rs` | Offline npm, Cargo, and Maven package graph extraction. |
+| `crates/beckarepo-core/src/symbols.rs` | On-demand intra-file symbols, Decisions v1 complexity, and local call graphs. |
+| `crates/beckarepo-core/src/analysis.rs` | Shared graph builder, deduplication, and node weighting. |
+| `crates/beckarepo-core/src/bin/beckarepo-cli.rs` | Standalone CLI (`v2` directory snapshots and `--json` `v1` compatibility). |
+| `src-tauri/src/` | Desktop host, 28 Tauri IPC commands, batched transport, SQLite (`storage.rs`), Git (`git.rs`), and structural metrics (`structure.rs`). |
+| `src/services/analysisClient.js` | Frontend IPC client and batched snapshot assembly. |
 
-## Contrato e acesso a arquivos
+## Contract & Path Security
 
-- Caminhos de nós são relativos à raiz, com `/`, e IDs correspondem ao caminho.
-- Arestas mantêm origem, destino, tipo, detalhe e direção. O ID serializa a tupla `(origem, destino, tipo)`.
-- A seleção de pasta e o arraste nativo autorizam uma raiz. O renderer não fornece uma raiz arbitrária para leitura.
-- Prévia de mídia exige o identificador da sessão e um caminho indexado; o destino canônico deve continuar dentro da raiz.
-- Symlinks não são percorridos. Diretórios gerados, caches e dependências conhecidos são excluídos.
-- Limites: 100.000 arquivos aceitos, conteúdo de texto menor que 500 KiB por arquivo, leitura por arquivo no scanner (256 MiB agregados apenas no pedido JSON v1) e mídia até 128 MiB por prévia. Os limites não representam garantia de consumo total de RAM: índices, grafo, serialização e interface também usam memória.
-- Progresso é enviado nas etapas de varredura, leitura e análise. Cancelamento é cooperativo entre lotes/arquivos.
-- Arquivos não legíveis geram avisos. Texto excedente ao limite por arquivo fica sem conteúdo; seu nó continua visível.
-- Tags usam agora a raiz canônica como chave de repositório. Preferências/metadados do armazenamento do antigo Electron não são importados automaticamente.
+- Node paths are normalized `/` relative paths within the authorized root; edge IDs encode `(source, target, type)`.
+- Native folder picker and drag-and-drop authorize the root in the host; the UI cannot read arbitrary host paths.
+- File content, media assets, and symbol reads verify the active session ID, indexed path membership, canonical confinement, and file revision.
+- Symlinks are never followed; known cache, build, and sensitive files/directories are excluded.
+- Limits: up to 100,000 files, text `< 500 KiB` per file (`256 MiB` aggregate only in v1 `--json` CLI requests), and media previews up to `128 MiB`.
+- Progress and cooperative cancellation apply across scanning, batched IPC, search, Git, and structural metrics.
+- Legacy Electron `localStorage` metadata requires explicit export/import via JSON or automatic canonical-root import on open (see [ETAPA_F2.md](ETAPA_F2.md)).
 
-## Regras de análise
-
-Imports e referências em JS/TS, HTML, CSS, Python, Go, C/C++, C#/Java/PHP/Kotlin/Dart/Scala e Rust; protótipos YAML, sprites RSI e estados PNG; relações entre arquivos do mesmo módulo, Docker/Compose e CI/build.
-
-As regras são heurísticas, não ASTs nem resolução de compilador. Aliases personalizados, macros, imports complexos, reexports e módulos condicionais podem não ser resolvidos. Comentários e referências ambíguas podem produzir falsos positivos. Rust tem resolução de formas comuns de `mod`, `crate`, `self` e `super`, sem semântica completa de Cargo.
-
-## Execução
-
-Na raiz do projeto:
+## Running & Building
 
 ```powershell
+# Development (Vite + native Tauri window)
 npm install
 npm run dev
-```
 
-`npm run dev` inicia Vite e o executável Rust via Tauri. `npm run dev:vite` abre somente a interface; o navegador avisa que a análise requer o aplicativo desktop.
+# UI-only in browser (analysis requires Tauri desktop window)
+npm run dev:vite
 
-```powershell
+# Production build & Windows NSIS installer
 npm run build
+
+# Standalone Rust CLI
+cargo run -p beckarepo-core --bin beckarepo-cli -- "D:\path\to\repository"
 ```
 
-Gera a interface, o executável `target/release/beckarepo.exe` e o instalador em `target/release/bundle/nsis/`. `npm run build:exe` explicita o mesmo alvo NSIS. O app compilado usa WebView2 e não requer Node ou um servidor Vite para executar.
-
-CLI totalmente Rust:
-
-```powershell
-cargo run -p beckarepo-core --bin beckarepo-cli -- "D:\caminho\do\repositorio"
-```
-
-Saída snapshot JSON v2 com metadados, grafo, estatísticas e avisos, sem conteúdo bruto. O modo `--json` recebe um `AnalysisRequest` v1 pelo stdin e devolve somente o resultado do grafo.
-
-## Próximos trabalhos
-
-O planejamento vigente está em [ROADMAP.md](ROADMAP.md). A política compartilhada de seleção/limites e exclusão de nomes sensíveis já está em `policy.rs`; veja [POLITICA_DE_ARQUIVOS.md](POLITICA_DE_ARQUIVOS.md).
-
-Paridade automatizada do parser com os corpora legados, benchmarks, índices incrementais/watch, resolução semântica, migração de metadados, edição de tags/notas e distribuição assinada. Os testes de contrato existentes não comprovam paridade completa do novo parser. Fixtures históricas e o corpus multilíngue ficam em `tests/fixtures/` como referências.
+The CLI prints a JSON v2 snapshot (metadata, graph, packages, stats, and warnings without raw source code), while `--json` preserves the v1 `AnalysisRequest`/`AnalysisResult` stdin/stdout contract.

@@ -1,73 +1,76 @@
-# F1 — Conteúdo sob demanda, transporte e atualização incremental
+# F1 — On-Demand Content, Batched Transport, and Incremental Refresh
 
-Atualização: 26/10/2026. MEM-01 a MEM-06 implementados; validação de execução e medições continuam pendentes.
+Implemented 2026-10-26 (`MEM-01` through `MEM-06`).
 
-## Implementado
+## Overview
 
-- O scanner inventaria metadados, caminhos e revisões (tamanho + mtime).
-- Uma passagem lê somente os conteúdos necessários para índices YAML/RSI; o índice conserva identificadores, não fontes completos.
-- A extração de relações carrega, analisa e libera um arquivo por vez. O analisador JSON v1 reaproveita a mesma construção de grafo.
-- Snapshot de pasta **v2** contém `schemaVersion`, `snapshotId`, `repositoryId`, `name`, `files`, `graph`, `warnings` e `changes`. Cada entrada em `files` tem `path`, `name`, `size`, `revision` e `contentState`; não tem `content`.
-- O objeto `graph` mantém seu contrato **v1** de nós/arestas. A versão do envelope não altera a versão do grafo.
-- `read_file_content` lê texto apenas quando solicitado pela aba de conteúdo. Mídia também exige a sessão atual e a revisão do arquivo.
-- `search_repository` faz busca literal sem distinguir maiúsculas/minúsculas nos caminhos do snapshot e nos textos elegíveis. Não aceita regex do usuário.
-- A interface descarta respostas de arquivos/consultas anteriores. Nova consulta, fechamento e troca de repositório cancelam o trabalho obsoleto; o botão Cancelar da busca limpa o termo.
+- The scanner inventories metadata, relative paths, and file revisions (size + mtime).
+- An initial pass reads only the files needed for YAML/RSI identifier indices, retaining compact IDs rather than full source text.
+- Relation extraction loads, parses, and drops one file at a time. The v1 JSON analyzer (`--json`) reuses the same graph builder.
+- Folder snapshots use **v2** envelopes (`schemaVersion`, `snapshotId`, `repositoryId`, `name`, `files`, `graph`, `warnings`, `changes`). Each entry in `files` carries `path`, `name`, `size`, `revision`, and `contentState` — never `content`.
+- The nested `graph` object retains the **v1** node/edge contract so existing graph consumers remain compatible.
+- `read_file_content` reads text on demand only when inspected in the file panel. Media previews (`read_asset`) likewise verify the active session and current file revision.
+- `search_repository` performs case-insensitive literal search across snapshot paths and eligible text files without accepting arbitrary regex patterns.
+- The frontend discards stale responses from superseded file selections or searches. Starting a new query, closing, or switching repositories cancels obsolete background work.
 
-## Comandos e limites
+## Commands and Limits
 
-| Comando | Entrada | Resultado |
+| Command | Input | Output |
 | --- | --- | --- |
-| `read_file_content` | `snapshotId`, `path` | `status`, `revision`, `content` opcional. |
-| `read_asset` | `snapshotId`, `path` | Bytes, com limite e revisão verificados. |
-| `search_repository` | `snapshotId`, `queryId`, `query`, `cursor`, `limit` | Hits, próximo cursor e cobertura do lote. |
-| `cancel_search` | `queryId` | Cancela somente a consulta correspondente. |
+| `read_file_content` | `snapshotId`, `path` | `status`, `revision`, optional `content` |
+| `read_asset` | `snapshotId`, `path` | Verified byte slice within size and revision bounds |
+| `search_repository` | `snapshotId`, `queryId`, `query`, `cursor`, `limit` | Hits, next cursor, and batch coverage |
+| `cancel_search` | `queryId` | Cancels only the matching search query |
 
-A sessão no backend conserva metadados, grafo, relações derivadas e a lista de caminhos autorizados. IDs recebidos do renderer não autorizam raízes arbitrárias. A paginação vincula cursor à consulta e à sessão; não é um índice persistente.
+The backend session retains metadata, the dependency graph, derived relations, and the authorized path list. Client-supplied IDs cannot authorize arbitrary filesystem roots. Search pagination binds each cursor to its query and session rather than maintaining a persistent index.
 
-- Texto individual: menor que 500 KiB, incluindo resultado UTF-8 da conversão.
-- Arquivos: até 100.000. Mídia: até 128 MiB por prévia.
-- Busca: 2 ou mais caracteres; máximo de 512 bytes no backend e 128 unidades UTF-16 no campo da interface.
-- Página nativa: até 256 arquivos percorridos e até 200 arquivos correspondentes; no máximo um hit por arquivo, com a primeira linha correspondente e trecho de até 240 caracteres.
-- A interface percorre páginas até obter 200 resultados ou terminar a pasta. “Carregar mais resultados” busca mais 200; teto de 2.000 arquivos correspondentes por consulta, com aviso para refinar o termo. Nós de contexto conectados não contam nesse teto de correspondências.
-- Cobertura mostra arquivos percorridos, textos pesquisados, arquivos sem pesquisa textual, alterações de revisão e falhas de leitura. Resultado por nome pode existir mesmo quando o conteúdo não pôde ser pesquisado.
-- Busca e leitura de prévia têm filas separadas no host e uma operação ativa por fila. O texto não entra em um cache global; o painel mantém somente sua última prévia.
+- **Per-file text limit:** strictly below 500 KiB (including UTF-8 conversion output).
+- **Corpus cap:** up to 100,000 files; media previews up to 128 MiB.
+- **Search:** minimum 2 characters; capped at 512 bytes in the backend and 128 UTF-16 code units in the UI input.
+- **Native search page:** scans up to 256 files and returns up to 200 matching files per page (at most 1 hit per file, first matching line, snippet up to 240 characters).
+- **UI search paging:** fetches pages until reaching 200 matches or end of repo; "Load more results" fetches another 200 up to a 2,000-match cap (connected context nodes do not count toward this cap).
+- **Coverage stats:** displays scanned files, searched text files, unsearched files, revision changes, and read errors. Filename hits still appear even if file contents could not be searched.
+- **Queues:** search and file preview run on separate single-flight queues in the host. File text is never stored in a global cache; only the active panel preview is held in memory.
 
-O limite agregado de 256 MiB continua no pedido JSON v1, mas não limita a soma dos textos processados pelo scanner de pasta: esses textos não ficam todos retidos. O grafo e o cache de relações têm, cada um, limites de 500.000 entradas e 128 MiB de strings; exceder aborta com erro explícito. Índices, metadados, alocações auxiliares e a representação da interface ainda têm custos adicionais. Não há limite global de RAM nem comprovação de ganhos quantitativos.
+While `--json` v1 requests keep the 256 MiB aggregate input cap, folder scanning no longer retains all file texts simultaneously. Graph and relation caches each enforce caps of 500,000 entries and 128 MiB of strings, failing explicitly if exceeded.
 
-## Alterações de arquivos
+## File Changes on Disk
 
-Texto é comparado com tamanho/mtime antes e depois da leitura. O scanner confere novamente as revisões dos arquivos ao terminar a análise. Alterações detectadas causam nova tentativa, até três inventários ao todo; instabilidade persistente retorna erro sem substituir a sessão anterior. Falhas de leitura geram avisos e impedem reutilizar o cache correspondente.
+Text reads compare file size and mtime before and after reading. At the end of analysis, the scanner re-verifies file revisions; detected changes trigger up to 3 total inventory retries before returning an error without replacing the active session. Read failures emit warnings and skip caching for affected files.
 
-**Atualizar** executa novo inventário. Se os caminhos e as revisões dos arquivos que fornecem IDs YAML/RSI continuam iguais, reutiliza o índice e as relações dos arquivos inalterados. Reanalisa arquivos com revisão diferente. Inclusão/remoção de caminhos ou mudança nos arquivos de IDs invalida a resolução global e refaz as relações. As relações estruturais e pesos são sempre reconstruídos. `changes` informa `parsed`, `reused`, `added` e `removed`; `parsed` inclui entradas sem texto cujo resultado vazio foi recalculado.
+Clicking **Refresh** runs a fresh inventory: if YAML/RSI provider paths and revisions are unchanged, cached indices and relations for unmodified files are reused while modified files are re-parsed. Added/removed paths or changed ID providers invalidate global resolution and rebuild relations. Structural relations and node weights are always recomputed. `changes` reports `parsed`, `reused`, `added`, and `removed`.
 
-Não há watcher, polling ou hash de conteúdo. A pasta continua viva: inclusões após o inventário e alterações que preservam tamanho/mtime podem não ser detectadas; as verificações não fornecem uma fotografia atômica. Na prévia, `changed` pede atualização; na busca, texto alterado é omitido e entra na contagem de alterações.
+Note: there is no background filesystem watcher, polling, or content hashing; on-disk changes preserving both size and mtime require a manual refresh to reconcile.
 
-## Transporte desktop
+## Desktop Transport
 
-`open_repository` recebe `analysisId`, pasta autorizada opcional ou `refreshSnapshotId` da sessão atual. Retorna um manifesto com contagens, sem as coleções inteiras. O progresso inclui `analysisId`; o renderer ignora eventos de outra operação.
+`open_repository` accepts `analysisId`, an optional authorized folder, or `refreshSnapshotId` for the active session, returning a manifest with counts rather than full collections. Progress events carry `analysisId` so the UI ignores stale events.
 
-O cliente pede `snapshot_batch` sequencialmente para arquivos, nós, arestas e avisos, com `snapshotId`, `analysisId`, seção e cursor. Cada resposta contém até 256 itens e 256 KiB (com espaço reservado ao envelope). Um item isolado maior que o orçamento causa erro. O backend exige a próxima seção/cursor exatos: o produtor só avança quando o cliente pede o próximo lote.
+The frontend requests `snapshot_batch` sequentially across files, nodes, edges, and warnings using `snapshotId`, `analysisId`, section, and cursor. Each batch holds up to 256 items and 256 KiB (reserving envelope overhead); single items exceeding the budget fail explicitly. The producer advances only as each cursor is requested.
 
-Após consumir e validar todos os lotes, o cliente chama `finish_snapshot`. Só então o backend troca a sessão e invalida leituras/buscas antigas. Cancelamento ou erro descarta o snapshot pendente, preservando o anterior durante uma atualização. A sessão anterior e a construção nova coexistem durante esse processo; os limites por estrutura não são um limite agregado de RAM. Um renderer interrompido pode deixar uma transferência pendente até cancelamento/fechamento do app; expiração automática ainda não existe.
+After validating all batches, the client calls `finish_snapshot` to atomically swap the active session and invalidate stale reads/searches. Cancellation or errors discard the pending snapshot while preserving any active session during a refresh.
 
-A identidade SQLite aparece no manifesto desktop como `repositoryId`/`worktreeId`; `legacyKey` conserva a raiz para migração de anotações. A CLI não usa SQLite e continua identificando a pasta pela raiz canônica.
+Desktop manifests also expose SQLite identities (`repositoryId`, `worktreeId`, and `legacyKey` for annotation migration). The standalone CLI does not use SQLite and identifies folders by canonical root path.
 
-## Compatibilidade da CLI
+## CLI Compatibility
 
 ```powershell
-cargo run -p beckarepo-core --bin beckarepo-cli -- "D:\caminho\do\repositorio"
+cargo run -p beckarepo-core --bin beckarepo-cli -- "D:\path\to\repository"
 ```
 
-A saída com pasta agora é snapshot v2 **sem conteúdo bruto**. Consumidores anteriores que esperavam `files[].content` precisam se adaptar. O modo `--json` continua aceitando `AnalysisRequest` v1 pelo stdin e devolvendo `AnalysisResult` v1, com os limites e a política de arquivos existentes.
+Directory scans output **v2 snapshots without raw source text**. `--json` mode continues accepting `AnalysisRequest` v1 on stdin and returning `AnalysisResult` v1 under the shared file policy.
 
-## Ainda pendente
+## Open Follow-ups
 
-- Orçamentos globais de índices/diagnósticos e prazo rígido de análise.
-- Validação de regressão, medições de memória, cancelamento durante lotes e interações completas na janela.
-- Observação automática de mudanças, expiração de transferência abandonada e hash de conteúdo, se necessários nas próximas fatias.
+- Hard parser execution deadlines alongside cooperative cancellation.
+- Optional filesystem watching and content-hash invalidation if needed in future releases.
 
-Não foram adicionados ou executados testes nesta entrega. Compilação e análise estática não comprovam paridade funcional nem desempenho.
+## Primary Files
 
-## Arquivos principais
-
-`repository.rs`: inventário, leitura, snapshots e busca; `parser.rs`: índice alimentado incrementalmente; `analysis.rs`: construção compartilhada com leitor por arquivo; `src-tauri/src/main.rs`: autorização, sessão e cancelamento; `transport.rs` e `analysisClient.js`: manifesto, lotes e confirmação; `useRepositorySearch.js`: paginação e descarte de respostas; `FilePanel.jsx`: prévia sob demanda.
+- `crates/beckarepo-core/src/repository.rs` — inventory, bounded reads, snapshots, and search
+- `crates/beckarepo-core/src/parser.rs` — incrementally fed identifier index
+- `crates/beckarepo-core/src/analysis.rs` — shared graph builder with per-file loader
+- `src-tauri/src/main.rs` — path authorization, sessions, and cancellation
+- `src-tauri/src/transport.rs` & `src/services/analysisClient.js` — manifest, batched IPC, and commit
+- `src/hooks/useRepositorySearch.js` — pagination and stale-response discarding
+- `src/components/FilePanel.jsx` — on-demand code and media inspection

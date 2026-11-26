@@ -1,75 +1,50 @@
-# F8 — primeira entrega: navegação em grafos densos
+# F8 — Dense Graph Navigation, Worker Physics, and Folder Drill-Down
 
-## Motivo e escopo
+Covers all three F8 visualization deliveries: legibility and dense Canvas navigation (`DenseGraphCanvas.jsx`), off-thread Worker force physics (`denseLayoutRuntime.js`), and progressive folder drill-down (`FolderGraphCanvas.jsx`).
 
-A captura reportada contém 85.224 arquivos e 91.745 conexões. O Canvas anterior reduzia a opacidade dos nós conforme o zoom aumentava (`0.4 / escala`), ampliava raios/espessuras mínimos em coordenadas do mundo e desenhava todas as conexões elegíveis. Isso tornava os arquivos menos legíveis ao aproximar. A física do modo acima de 15 mil nós também usava links curtos sem repulsão, favorecendo concentração.
+## 1. Dense Graph Navigation (`DenseGraphCanvas.jsx`)
 
-A primeira parte de F8 foi antecipada para tratar a navegação. O novo `DenseGraphCanvas.jsx` substitui o Canvas usado acima de 800 nós, incluindo o grafo de busca quando ultrapassa esse tamanho. A visualização SVG de até 800 nós continua disponível. Os dados e filtros do grafo não são truncados para produzir a redução visual.
+Prioritized to address legibility degradation observed on an **85,224-file, 91,745-connection** dataset, where the earlier Canvas lowered node opacity as zoom increased (`0.4 / scale`), scaled strokes in world coordinates, and drew all eligible edges unconditionally.
 
-## Como explorar
+`DenseGraphCanvas.jsx` replaces the legacy Canvas for global and search graphs exceeding 800 nodes while keeping the SVG Classic mode available up to 800 nodes without truncating underlying graph data or filters.
 
-1. Abra **grafo global**. Use a roda ou os botões **+ / −** para aproximar/afastar.
-2. Círculos com números representam arquivos próximos na tela. Clique para aproximar daquela região. O tooltip informa a contagem exata, inclusive quando o círculo mostra `999+`.
-3. Clique em um arquivo, ou selecione pela árvore e use **Localizar selecionado**. O modo **Automáticas** destaca as conexões incidentes e seus vizinhos; sem seleção, passar sobre um arquivo também permite inspecioná-lo.
-4. Use **Só do arquivo** para manter apenas conexões incidentes ao arquivo selecionado/sob o ponteiro. **Todas (até 12 mil)** oferece contexto mais amplo, ainda com limite de desenho indicado.
-5. **Limpar seleção** retorna ao contexto geral. **Enquadrar tudo** ajusta a câmera aos arquivos do filtro atual, incluindo os isolados.
-6. Arraste o fundo para navegar. Arraste um arquivo para fixar sua posição; dê duplo clique para liberá-lo.
+### Controls & Exploration
 
-Com foco no Canvas, `+`, `−`, setas, `Home` e `Escape` controlam zoom, câmera, enquadramento e seleção. Os botões também podem ser acessados por teclado. O caminho completo aparece no tooltip do arquivo e no painel de detalhes.
+1. Open **Global graph** and zoom via mouse wheel or **+ / −** buttons (`0.002×` to `64×`).
+2. Numbered circles aggregate screen-nearby nodes into `24×24 px` spatial clusters; click to zoom into that region (tooltip shows exact counts even when labeled `999+`).
+3. Click a node (or select via tree and click **Locate selected**) to inspect its neighborhood; **Automatic** highlights incident edges and neighbors, and hovering without a selection previews local links.
+4. **File only** restricts edges to the active selection/hover; **All (up to 12,000)** broadens context within explicit drawing budgets.
+5. **Clear selection** resets focus; **Fit all** frames all nodes in the active filter (including isolated nodes).
+6. Drag background to pan; drag a node to pin it; double-click to release it.
+7. Keyboard navigation when focused: `+`, `−`, arrow keys, `Home`, and `Escape`.
 
-## Regras visuais
+### Visual & Spatial Rules
 
-- Zoom de 0,002× a 64×. Raios, linhas, rótulos e tolerância do ponteiro são definidos em pixels CSS; a opacidade não diminui com o zoom. Arquivos fora da vizinhança selecionada ficam atenuados para destacar o foco.
-- Acima de 3.000 arquivos na área consultada, arquivos próximos são agrupados em células de 24 × 24 pixels. A agregação permanece até cair para 2.000 ou menos, evitando alternância em torno de um único limiar.
-- São grupos **espaciais de desenho**, não pastas nem comunidades arquiteturais. Seleção e extremos das conexões destacadas têm prioridade sobre a agregação.
-- No grafo de busca, grupos que contêm resultados recebem borda na cor da busca e o tooltip informa quantos resultados contêm.
-- Modo automático sem foco: até 1.200 conexões. Com foco: até 5.000 conexões incidentes. Modo todas: até 12.000. Acima do orçamento, uma amostra determinística da lista elegível é desenhada; a barra inferior mostra desenhadas/elegíveis e um aviso. Não há afirmação de que todas as conexões estejam visíveis.
-- Conexões elegíveis cruzam a área visível e respeitam o filtro de tipos e o modo atual. O recorte também mantém linhas que atravessam a tela com ambos os extremos fora dela. Nós são consultados com uma pequena margem de 24 pixels para evitar desaparecimento nas bordas.
-- Setas de direção aparecem nas conexões em foco quando há espaço suficiente. Rótulos de arquivos têm orçamento de 80 e rejeitam colisões. Nome selecionado, hover e vizinhos têm prioridade.
-- No Canvas, **Mostrar grupos** exibe até 12 legendas dos clusters na visão geral. As legendas não crescem com o zoom e desaparecem na aproximação/foco; os grandes preenchimentos de hull não são desenhados nessa versão do Canvas.
-- O índice espacial limita a consulta de nós à região visível e o hit-test aos marcadores desenhados. Grupos não podem selecionar um arquivo oculto arbitrário.
+- Node radii, line widths, labels, and hit-test tolerances are sized in CSS pixels; opacity stays readable across zoom levels while non-neighborhood nodes dim during focus.
+- Spatial clustering activates above `3,000` visible nodes in the queried region and remains active until dropping to `≤ 2,000` (hysteresis prevents flicker). Selected nodes and highlighted endpoints never collapse into clusters. Search clusters carry a highlighted border and tooltip match count.
+- **Connection budgets:** `1,200` (Auto, unfocused), `5,000` (focused incident links), `12,000` (All), using deterministic sampling above budget and displaying drawn vs. eligible counts in the footer. Viewport clipping preserves edges whose endpoints both lie off-screen when crossing the viewport.
+- Direction arrows appear on focused edges when space allows; collision-aware labels cap at 80 (prioritizing selected, hovered, and neighbor nodes); **Show groups** displays up to 12 cluster captions at overview zoom.
+- `ResizeObserver` adapts Canvas backing store dimensions to panel resizes and device pixel ratio while preserving camera center; filter changes within the same snapshot/mount preserve known positions and camera.
 
-## Layout e ciclo de vida
+## 2. Off-Thread Worker Physics (2026-10-30)
 
-O layout parte de uma distribuição determinística. Para mais de 15 mil nós, ligações mais fracas e forças de ancoragem mantêm a distribuição inicial mais aberta. Isso não resolve todos os casos de sobreposição nem garante qualidade espacial para qualquer grafo.
+`DenseGraphCanvas` offloads D3 force simulation to a module Web Worker (`src/workers/denseLayoutRuntime.js` managed by `src/utils/denseLayoutClient.js`) across global/search Canvas graphs (> 800 nodes) and the co-change overlay.
 
-Redesenhos são agendados sob demanda por câmera, física, seleção ou tamanho. `ResizeObserver` ajusta o bitmap à área dos painéis, preservando o centro da câmera. A densidade de pixels do monitor também é considerada. Soltar o arraste fora do Canvas encerra o gesto; listeners, simulação, observador e frame pendente são liberados ao desmontar.
+- **Strict isolation:** transfers only numeric geometry (`4 Float64` per node, `2 Uint32` per edge on init; `2 Float64` per node back) via transferable buffers — never source code, file paths, React state, or camera state.
+- **Backpressure & revisions:** posts updates at most every ~80 ms with at most 1 unacknowledged batch in flight. Dragging pins locally and increments a drag revision so stale Worker frames are ignored; double-clicking unpins and reheats the simulation. Switching graphs/filters terminates the old Worker; a 30 s stall watchdog or error safely falls back to static layout.
+- **Graph performance telemetry:** reports cumulative compute time/iterations, last batch apply time, latest Canvas draw duration, and transferred coordinate bytes. Synthetic comparison: [validation/2026-10-30/RELATORIO_F8_WORKER.md](validation/2026-10-30/RELATORIO_F8_WORKER.md).
 
-Dentro da mesma montagem do Canvas e do mesmo snapshot, mudanças de filtro preservam posições disponíveis e câmera. A troca para SVG, desmontagem da visão ou novo snapshot reinicia esse estado local. Seleção e rascunhos continuam sob controle do componente pai.
+## 3. Folder Drill-Down Mode (2026-10-31)
 
-## O que ainda falta em F8
+For Canvas graphs (> 800 nodes), **Detail → Folders** projects the repository into progressive directory representatives (`src/utils/folderProjection.js`, `src/components/FolderGraphCanvas.jsx`):
 
-- Física do Canvas foi movida para Worker em 30/10 (seção abaixo). SVG pequeno e grafo local continuam na thread da interface; construção do índice espacial e desenho do Canvas ainda crescem com o número de nós.
-- Agregação por pastas com expansão explícita disponível desde 31/10 (seção abaixo). Expansão automática por zoom e integração do zoom semântico de símbolos ao grafo global continuam pendentes.
-- Persistência de posições/câmera entre visões e snapshots, rastro de navegação e medições de tempo/memória/frame.
-- Experimentos comparativos com Worker/Rust/Wasm/GPU. Não foi adicionada dependência para GPU.
+- Squares represent folders; circles represent individual files (root files remain individual; clicking a folder square reveals its immediate files and subfolders). **Browse by folders** offers search, 20-item pagination, counts, and branch/full collapse controls.
+- Every file belongs to exactly one visible representative. The selected file is always extracted from its collapsed folder and rendered individually without double-counting. Search match counts aggregate per folder.
+- Edges between visible representatives are summed by `(endpoints, type, direction)`, keeping bidirectional co-change pairs distinct and tracking intra-folder edges internally (never as fake folder self-loops). Line labels display type and multiplicity within the 80-label budget.
+- Expansion is explicit (not triggered by zoom thresholds) to prevent oscillating hierarchy shifts. Camera and known positions persist across expansions within the same mount/snapshot, spawning newly revealed children near their parent.
 
-Não foram executados testes automatizados, testes interativos ou benchmarks nesta entrega. A captura orientou a correção; o conjunto de 85 mil arquivos não foi executado para medir a melhoria. O aceite pendente inclui: grafo denso real, aproximação/afastamento, seleção pela árvore, arquivo isolado, nó com muitas conexões, linha atravessando a tela, filtros, troca de idioma, resize dos painéis, arraste para fora do Canvas e retorno da visão.
+## Open Follow-ups
 
-As pendências de F3 (identidade persistente de worktrees, cache SQLite, hotspots, autoria e coalteração) continuam em [ROADMAP.md](ROADMAP.md). Esta entrega inicia a frente de visualização e não marca F3 ou F8 completas.
-
-## Segunda entrega — física do Canvas em Worker, 30/10/2026
-
-Após F6 e o piloto F7, o usuário autorizou continuar F8. `DenseGraphCanvas` usa um Worker de módulo para simular as mesmas forças D3. Isso abrange o grafo global e de busca acima de 800 nós e o Canvas da coalteração. Grafos SVG/local pequenos continuam com seu motor anterior.
-
-Somente geometria numérica e índices de conexões são transferidos; caminhos, fontes, seleção e câmera ficam na interface. Inicialização: quatro Float64 por nó e dois Uint32 por conexão. Respostas: dois Float64 por nó, com buffers transferíveis, aproximadamente até um lote a cada 80 ms e no máximo um lote aguardando confirmação. Todos os nós, inclusive isolados, permanecem no layout.
-
-Arraste fixa imediatamente a posição local e envia uma revisão ao Worker. Respostas anteriores a essa revisão são descartadas e confirmadas; duplo clique libera a posição e aquece a simulação. Troca de grafo/filtro encerra o Worker anterior, conserva posições/câmera no escopo já suportado e ignora respostas tardias. Desmontagem encerra timers e Worker. Falha de criação, protocolo, execução ou ausência de progresso por 30 segundos preserva as últimas posições, com aviso e navegação estática; não há fallback automático para física pesada na interface.
-
-**Desempenho do grafo** mostra cálculo acumulado/iterações, aplicação do último lote, desenho mais recente e bytes de coordenadas recebidos. Desenho inclui índice espacial, recorte, rótulos e Canvas; não é FPS nem duração total da operação. A simulação ainda usa CPU e o transporte/índice/desenho têm custos próprios. `tests/benchmark-dense-layout.mjs` compara o mesmo algoritmo em Node na thread principal e em Worker, sem representar a WebView.
-
-Validação e limites: [relatório F8](validation/2026-10-30/RELATORIO_F8_WORKER.md). Nenhuma dependência nova, alteração de banco ou execução de fontes analisados. VIS-01 continua parcial até medições reais e aceite completo; LOD por pastas, física SVG/local e comparações Wasm/GPU permanecem abertos.
-
-## Terceira entrega — detalhamento por pastas, 31/10/2026
-
-Nos grafos global/de busca que usam Canvas (mais de 800 nós), **Detalhamento → Pastas** produz uma projeção por diretórios. Quadrados representam pastas e círculos representam arquivos. Clique em uma pasta para revelar os arquivos imediatos e suas subpastas. **Navegar por pastas** oferece busca, lista paginada em 20 itens, contagens e botões para recolher ramos ou tudo. Arquivos da raiz continuam individuais.
-
-Cada arquivo pertence a exatamente um representante. O selecionado é retirado do agregado e permanece individual, inclusive ao recolher seu ramo; não é contado duas vezes. Resultados de busca são somados por pasta. Grupos são identificados por caminho completo, sem depender do nome final. Relações entre representantes são somadas por tipo, direção e bidirecionalidade. Relações inteiramente dentro de uma pasta são contadas como internas; não se transformam em falsos laços visíveis. Autorreferências de arquivos individuais continuam relações do arquivo.
-
-As linhas mostram tipo e multiplicidade quando há espaço (orçamento de 80 rótulos). A barra diferencia relações agregadas desenhadas de conexões originais representadas; a lista informa relações internas. A amostragem existente de linhas ainda se aplica. Esta é uma projeção visual: não substitui os dados de F4, não transforma contagem em risco e não comprova uso em execução.
-
-Expansão e recolhimento são explícitos; zoom da câmera não troca o nível automaticamente. Isso evita mudanças oscilantes de hierarquia. A câmera é mantida na mesma montagem/snapshot, posições conhecidas são reaproveitadas e novos filhos nascem perto do ancestral previamente visível. O Worker reorganiza a projeção. **Enquadrar tudo** e **Localizar selecionado** continuam disponíveis. Pins dos arquivos já vistos são preservados. Pastas não são arquivos editáveis, arrastáveis ou alvos de anotações.
-
-Limites: projeção síncrona na interface, com custo dependente de nós, profundidade dos caminhos e arestas a cada mudança de filtro/expansão/seleção; relações não são truncadas antes da agregação. Repositórios com muitos arquivos na raiz ou muitos irmãos continuam densos. Cache de posições dura apenas a montagem e o snapshot; transição para SVG, troca de visão/repositório e novos snapshots não prometem persistência. Métricas reais de RAM/p50/p95 e LOD automático ainda pendentes.
-
-Evidências e reprodução: [relatório de pastas](validation/2026-10-31/RELATORIO_F8_PASTAS.md). Sem dependências novas ou alteração do banco.
+- Automatic zoom-driven LOD thresholds with hysteresis (`VIS-03`) and persistence of layout positions across views/snapshots.
+- Off-thread physics for small SVG and local neighborhood graphs, comparative WebGPU/Wasm layout benchmarks (`VIS-04`), and reduced-motion/accessibility polish (`VIS-05`).
+- Validation details: [Worker Report](validation/2026-10-30/RELATORIO_F8_WORKER.md), [Folders Report](validation/2026-10-31/RELATORIO_F8_PASTAS.md), and [85k-File Graph Report](validation/2026-11-25/RELATORIO_GRAFO.md).

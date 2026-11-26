@@ -14,7 +14,7 @@ Follow-ups: [Visual Validation (2026-10-28)](../2026-10-28/VALIDACAO_VISUAL.md) 
 - Production build succeeded: frontend bundle, Rust binary, and Windows NSIS x64 installer (~4.20 MiB). The installer was built and verified on disk, not executed via setup wizard.
 - The CLI ran end-to-end analyses against a synthetic fixture and this repository.
 - Isolated SQLite databases, Git repositories, a linked worktree, and a local shallow clone were used exclusively for testing.
-- **Interactive UI verification deferred:** Window-level UI verification in the isolated desktop target was blocked by environment window-access permissions during this run and completed in the [2026-10-28 visual pass](../2026-10-28/VALIDACAO_VISUAL.md).
+- **Interactive UI verification deferred:** Live desktop window verification was deferred from this run and completed in the [2026-10-28 visual pass](../2026-10-28/VALIDACAO_VISUAL.md).
 
 All automated checks passed without errors. However, automated coverage alone does not close every roadmap criterion or interactive workflow; remaining visual checks and preparation items for the next milestone are listed below.
 
