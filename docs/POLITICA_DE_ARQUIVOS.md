@@ -4,7 +4,7 @@ Implemented in `crates/beckarepo-core/src/policy.rs` and shared across the files
 
 ## Selection & Sensitive-Path Exclusions
 
-- **Monorepo packages:** `packages/` is inventoried so monorepo source files are analyzed. Lockfiles (`package-lock.json`, `npm-shrinkwrap.json`, `Cargo.lock`) are read in a dedicated bounded pass for [F6](ETAPA_F6.md) and excluded from the code tree, text search, and file dependency graph (`yarn.lock` and `pnpm-lock.yaml` emit unsupported-format diagnostics).
+- **Monorepo packages:** `packages/` is inventoried so monorepo source files are analyzed. Lockfiles (`package-lock.json`, `npm-shrinkwrap.json`, `Cargo.lock`) are read in a dedicated bounded pass for package analysis and excluded from the code tree, text search, and file dependency graph (`yarn.lock` and `pnpm-lock.yaml` emit unsupported-format diagnostics).
 - **Sensitive filenames:** Evaluated case-insensitively on every path component across `/` and `\` separators (normalizing trailing spaces/dots):
 
 | Rule | Excluded Examples |
@@ -38,4 +38,4 @@ Text byte counting measures post-conversion UTF-8 bytes; if a file grows on disk
 
 ## Impact on Search & Export
 
-Files excluded by policy never enter snapshots, full-text search, or the file tree exported to Markdown. See [ETAPA_F1.md](ETAPA_F1.md) and [ROADMAP.md](ROADMAP.md) for snapshot v2 and transport details.
+Files excluded by policy never enter snapshots, full-text search, or the file tree exported to Markdown. See [Architecture](ARQUITETURA_ROADMAP.md) and [ROADMAP.md](ROADMAP.md) for snapshot v2 and transport details.

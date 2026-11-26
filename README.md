@@ -31,40 +31,13 @@ BeckaRepo is a **native desktop application** for repository architecture visual
 Instead of manually navigating folders and tracing imports across thousands of files, BeckaRepo builds an interactive relational representation of your local repository — helping developers and architects explore:
 
 - **File & Module Dependencies** backed by Tree-sitter syntactic parsing and evidence ranges
-- **External Package Graphs** across npm, Cargo, and Maven manifests and lockfiles
+- **External Package Graphs** from npm and Cargo manifests and supported lockfiles, plus direct Maven declarations
 - **Intra-File Symbols & Complexity** with local lexical call graphs
 - **Structural Metrics** including dependency cycles (SCC), PageRank, and betweenness centrality
 - **Git History & Insights** with commit timelines, churn hotspots, and co-change analysis
 - **Large-Scale Visualization** tested on repositories with **85,000+ files and 91,000+ connections**
 
-**All analysis, Git inspection, and SQLite storage execute locally in Rust — no code execution, no network calls, and no data leaves your machine.**
-
----
-
-# What Changed: From v1.1.0 to v2.0.0
-
-> **Why v2.0.0?** Both `v1.0.0` (74.4 MB) and `v1.1.0` (75.9 MB) were built on **Electron + Node.js**, using JavaScript regex heuristics (`parser.js`) and browser `localStorage`. The current codebase is a **ground-up architectural rewrite** to **Tauri 2 + Rust**, replacing the runtime, analysis engine, storage layer, IPC transport, and large-graph renderer while introducing syntactic parsing, external package mapping, symbol complexity, structural graph analytics, Git insights, and a standalone CLI.
-
-## v1.1.0 → v2.0.0 Comparison
-
-| Dimension | v1.1.0 (Electron) | v2.0.0 (Tauri 2 + Rust) |
-|---|---|---|
-| **Desktop Runtime** | Electron 29 + Node.js (`main.js`, `preload.js`) | **Tauri 2 + Rust** (`src-tauri/`, WebView2) |
-| **Installer Size (Windows)** | `75.9 MB` (`BeckaRepo.Setup.1.1.0.exe`) | **`4.98 MB`** NSIS setup (~93.4% smaller) |
-| **Analysis Engine** | JavaScript heuristics (`src/utils/parser.js`) | **Native Rust core** (`crates/beckarepo-core/`, 11,393 Rust LOC across workspace) |
-| **Syntactic Parsing** | Regex / heuristic only | **Tree-sitter** (`0.25.10`) for JS/JSX/TS/TSX/Rust + heuristic fallback for YAML/RSI/Docker/CI |
-| **Module Resolution** | Path/string heuristics | **`tsconfig`/`jsconfig`** (`paths`, `baseUrl`, `extends`), **Cargo** targets/workspaces, Rust `mod` tree & `#[path]` |
-| **External Dependencies** | — | **npm, Cargo, Maven** manifests & lockfiles, consumer evidence, indirect impact |
-| **Symbols & Complexity** | — | **On-demand Tree-sitter symbols**, Decisions v1 complexity, intra-file call graph |
-| **Structural Analytics** | Clustering (Folder, Semantic, LPA, Type) + N-Hop | Adds **Rust SCC cycles** with witness paths, **PageRank**, **betweenness centrality** |
-| **Git Integration** | — | **Per-file Git history**, worktrees, churn **hotspots**, **co-change** pairs & overlay, `.mailmap` authorship |
-| **Graph Layouts & Scale** | SVG (≤ 800) + Canvas + Ultra Mode (> 15k) | **Galaxy, Atlas, Free (Web Worker), Classic (SVG)** + **Dense Canvas** (85k+ files) + **Folder** drill-down |
-| **Persistence** | `localStorage` (`beckarepo_tags_<name>`) | **Bundled SQLite (`rusqlite 0.38`)** — tags, notes, preferences, 5-slot backup/restore, JSON import, folder reassociation |
-| **Search & Preview** | In-memory Term Graph search + code preview | **Paginated native Rust search**, cooperative cancellation, **image/audio/video preview** (up to 128 MiB) |
-| **IPC & Refresh** | Direct Electron IPC | **Batched IPC** (256 items / 256 KiB), atomic snapshot swap, **incremental refresh** |
-| **CLI Tool** | — | **`beckarepo-cli`** (JSON v2 snapshot without raw source + `--json` v1 compatibility) |
-| **Frontend & Docs** | 9 components, 4 hooks, 1 modal doc | **22 React components**, 7 hooks, 2 Web Workers, **23 docs** + 22 screenshots (PT/EN) |
-| **Automated Tests** | — | **21 JavaScript tests** + **64 Rust workspace tests** |
+The Rust host scans local files, reads Git history and stores project data in SQLite. The desktop UI computes graph layouts locally. Opening a repository does not run its code or upload its contents.
 
 ---
 
@@ -105,7 +78,7 @@ Four global layouts plus progressive folder exploration:
 | **Free** | Force-directed simulation offloaded to a **Web Worker** (`denseLayout.worker.js`), preserving pinned nodes |
 | **Classic** | High-detail SVG mode for graphs up to 800 nodes |
 
-For repositories above 800 files, the **Dense Canvas** renderer (`DenseGraphCanvas.jsx`) activates automatically:
+The file graph opens in **Dense Canvas** (`DenseGraphCanvas.jsx`). Classic SVG is also available for graphs of up to 800 nodes. Dense Canvas supports the following interactions:
 
 - Zoom from `0.002×` to `64×` with CSS-pixel sizing and collision-aware labels (up to 80 visible labels).
 - Spatial grouping in `24×24 px` cells with hysteresis (`3,000 → 2,000`) to avoid flicker.
@@ -133,51 +106,20 @@ Read-only Git integration via `std::process::Command` (no shell invocation, no r
 - **Local SQLite Database** (`beckarepo.sqlite` via `rusqlite 0.38`): stored in the OS local app data directory, never polluting the analyzed repository.
 - **Tags & Notes**: worktree-scoped annotations with in-memory drafts, close-protection prompts, conflict revision checks, and explicit folder reassociation for moved projects.
 - **Backups & Migration**: automatic pre-migration and manual consistent SQLite backups (5-file retention), verified restore, idempotent JSON import, and automatic import of legacy `localStorage` data (`beckarepo_tags_<root>`).
-- **UI Personalization**: runtime **Portuguese / English** switching, resizable panels, customizable accent color and graph spacing.
+- **UI Personalization**: runtime **Portuguese / English** switching, resizable panels, custom accent colors and comfortable or compact interface spacing.
 
 ## Native Search, Previews & Export
 
 - **Native Full-Text Search**: case-insensitive literal search in Rust across paths and eligible text files, paginated (200 hits/batch up to 2,000), with coverage reporting and cancellation.
 - **Media & Code Inspection**: tokenized code view plus native previews for images, audio, and video (up to 128 MiB).
 - **Markdown Export**: export repository tree and statistics via native save dialog.
-- **Incremental Refresh**: button-triggered rescan that reuses valid cached relations and updates only changed files.
+- **Incremental Refresh**: button-triggered rescan that reuses valid cached relations and rebuilds affected indices when resolution inputs change.
 
 ---
 
 # System Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  Frontend (React 19 + D3.js 7 + Vite 8)                              │
-│  ├── 22 Components (DenseGraphCanvas, FolderGraphCanvas,             │
-│  │     SymbolPanel, PackageInsights, GitHistoryPanel,                │
-│  │     RepositoryInsights, ParsingEvidence, ManualModal, ...)        │
-│  ├── 7 Hooks (useNativeAnalysis, useRepositorySearch, useTags, ...)  │
-│  └── 2 Web Workers (denseLayout.worker.js, denseLayoutRuntime.js)    │
-├──────────────────────────────────────────────────────────────────────┤
-│  Tauri 2 IPC (28 commands · batched transport: 256 items / 256 KiB)  │
-├──────────────────────────────────────────────────────────────────────┤
-│  Desktop Host (src-tauri/src/ — 10 Rust modules)                     │
-│  ├── main.rs         Session lifecycle, file/asset/symbol/search IPC │
-│  ├── transport.rs    Cursor-based batched snapshot delivery          │
-│  ├── storage.rs      SQLite schema v2, tags/notes, backups, prefs    │
-│  ├── structure.rs    SCC cycles, PageRank, betweenness centrality    │
-│  └── git/            Read-only Git history, hotspots, co-change      │
-├──────────────────────────────────────────────────────────────────────┤
-│  Analysis Engine (crates/beckarepo-core/ — 19 Rust files)            │
-│  ├── repository.rs   Walkdir scanner, revisions, snapshots, search   │
-│  ├── analysis.rs     Two-pass indexing & relation graph construction │
-│  ├── parser.rs       Heuristic/regex + Tree-sitter integration       │
-│  ├── syntax.rs       Tree-sitter grammars & evidence extraction      │
-│  ├── web_resolution  tsconfig / jsconfig paths, baseUrl & extends    │
-│  ├── cargo_resolution Cargo.toml workspaces, targets & dependencies  │
-│  ├── rust_modules.rs Logical mod tree, #[path], crate/self/super     │
-│  ├── packages.rs     npm, Cargo & Maven manifests + lockfiles        │
-│  ├── symbols.rs      On-demand symbols, complexity & call graph      │
-│  ├── policy.rs       File limits & sensitive-path blocking           │
-│  └── beckarepo-cli   Standalone CLI binary                           │
-└──────────────────────────────────────────────────────────────────────┘
-```
+Rust owns local file access, the analysis graph and SQLite storage. The React interface consumes versioned snapshots through Tauri commands and renders the selected projection. [Architecture and data contracts](docs/ARQUITETURA_ROADMAP.md)
 
 ### Repository Structure
 
@@ -189,29 +131,20 @@ beckarepo/
 │   └── examples/profile_scan.rs
 ├── src-tauri/src/              # Tauri 2 desktop host (SQLite, Git, Structure, IPC)
 ├── src/                        # React 19 + D3 7 frontend
-│   ├── components/             # 22 UI components
-│   ├── hooks/                  # 7 custom React hooks
+│   ├── components/             # UI components
+│   ├── hooks/                  # React hooks
 │   ├── workers/                # Web Worker physics simulation
 │   ├── utils/                  # Galaxy/Atlas layouts, clustering, folder projection
 │   └── services/               # Tauri IPC client
 ├── tests/                      # JavaScript test suite (appearance, folder projection, UI utils)
-├── docs/                       # Illustrated manual, roadmap, ETAPA_F1–F8, validation reports, 22 screenshots
+├── docs/                       # Illustrated manual, architecture, file policy and roadmap
 ├── Cargo.toml                  # Rust workspace
 └── package.json                # Node scripts & frontend dependencies
 ```
 
 ---
 
-# Performance & Benchmarks
-
-Measured on a real-world repository with **85,224 files and 91,744 connections** (see [validation report](docs/validation/2026-11-25/RELATORIO_GRAFO.md)):
-
-| Metric | Measurement |
-|---|---|
-| **Full Rust scan (release profile)** | **~236 s** (down from 351 s after path-set sharing & parallel revision checks) |
-| **Global Graph open (85k files)** | **~2.0 s** from click to interactive Canvas |
-| **Galaxy / Atlas grouping** | 214 spatial groups (Galaxy) / 584 groups (Atlas), 1,200 overview edges drawn |
-| **Windows NSIS Installer** | **4.98 MB** (`5,217,995` bytes) vs. `75.9 MB` in v1.1.0 |
+# Profiling a repository
 
 Run the release scanner benchmark on any local folder:
 
@@ -288,18 +221,15 @@ See [File Policy (`docs/POLITICA_DE_ARQUIVOS.md`)](docs/POLITICA_DE_ARQUIVOS.md)
 
 ---
 
-# Documentation & Validation
+# Documentation
 
 | Document | Description |
 |---|---|
 | [Illustrated Manual](docs/MANUAL.md) | Step-by-step user guide with 22 screenshots (PT & EN) |
 | [Technical Roadmap](docs/ROADMAP.md) | Phased delivery plan (F0–F8) and future goals |
-| [Architecture Plan](docs/ARQUITETURA_ROADMAP.md) | Architecture evolution and schema contracts |
+| [Architecture](docs/ARQUITETURA_ROADMAP.md) | Module ownership, snapshot lifecycle and storage |
 | [File Policy](docs/POLITICA_DE_ARQUIVOS.md) | Reading rules, exclusions, and memory budgets |
-| [Rust Migration](docs/MIGRACAO_RUST.md) | Native migration details and known gaps |
 | [UI Direction](docs/INTERFACE.md) | Visual design language and palette |
-| [Phase Reports](docs/) | [F1](docs/ETAPA_F1.md) · [F2](docs/ETAPA_F2.md) · [F3](docs/ETAPA_F3.md) · [F4](docs/ETAPA_F4.md) · [F5](docs/ETAPA_F5.md) · [F6](docs/ETAPA_F6.md) · [F7](docs/ETAPA_F7.md) · [F8](docs/ETAPA_F8.md) |
-| [Validation Reports](docs/validation/) | Automated test results, benchmarks, and visual checks |
 
 ---
 
@@ -311,6 +241,6 @@ Created with dedication to software engineering, visualization systems, and deve
 
 ### Message for Rebecka
 
-> *"From one friend to another."*
+> *"From a friend to a friend"*
 
 </div>

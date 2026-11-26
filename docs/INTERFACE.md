@@ -1,6 +1,6 @@
 # Visual Design Direction
 
-Workspace-first desktop interface: neutral gray surfaces, subtle dividers, legible typography, and purposeful color encoding.
+Workspace-first desktop interface: dark surfaces tinted by the selected accent, lilac by default, subtle dividers, legible typography, and purposeful color encoding.
 
 - `src/styles/theme.js`: shared color tokens for panels, graph categories, and controls.
 - `src/styles/app.css`: layout rules, keyboard focus rings, custom scrollbars, and `prefers-reduced-motion` support.

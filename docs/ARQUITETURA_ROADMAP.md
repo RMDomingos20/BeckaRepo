@@ -1,84 +1,60 @@
-# Architecture Plan & Contract Transition
+# BeckaRepo architecture
 
-> Reference architecture blueprint created for the Rust/Tauri evolution. Phases F0–F8 have since been implemented across `crates/beckarepo-core/` and `src-tauri/src/` — see [ETAPA_F1.md](ETAPA_F1.md)–[ETAPA_F8.md](ETAPA_F8.md) and [ROADMAP.md](ROADMAP.md) for exact implemented schemas and commands.
+BeckaRepo opens a local worktree and represents it as a versioned snapshot. The Rust core inventories files and resolves relationships. The Tauri host owns the authorized root, the active session and the local database. React builds the explorer, graph views and file panel from the snapshot.
 
-## Architectural Decisions
-
-1. **Rust is the local data authority.** Rust authorizes repository roots, enforces read policies, executes parsing, search, Git queries, structural analytics, and SQLite persistence. React presents results and invokes bounded commands.
-2. **Evolve the existing core incrementally.** Add internal modules only when backed by real implementations and consumers — avoiding speculative empty crates or abstractions.
-3. **On-demand source text.** Separate file inventory, extracted facts, resolution, and content previews; do not hold raw source text for the entire repository in memory.
-4. **Local SQLite for durable state.** Prefer host-managed SQLite over browser `localStorage`/`IndexedDB` for persistent user annotations and preferences.
-5. **Typed, evidence-backed relations.** Structural imports, historical co-change, and visual clustering remain distinct projections with separate filters.
-6. **Separate syntactic parsing from resolution.** Tree-sitter extracts per-file syntax facts (`syntax.rs`) while bounded resolvers map config aliases, Cargo targets, and module trees; `regex` remains an explicitly labeled fallback.
-7. **Measure before changing graphics backends.** Enforce node/edge budgets, folder LOD, and off-thread Web Worker physics before evaluating WebGPU or Wasm ports.
-
-## Data Flow
+## Opening a repository
 
 ```mermaid
-flowchart TD
-  UI[React: Queries & Visualization] --> IPC[Typed Tauri IPC Commands]
-  IPC --> Session[Session & Authorized Root]
-  Session --> Policy[File Policy & Budgets]
-  Policy --> Scan[Inventory & Bounded Reads]
-  Scan --> Facts[Syntax Facts & Compact Indices]
-  Facts --> Resolve[Resolution & Diagnostics]
-  Resolve --> Graph[Versioned Snapshot]
-  Graph --> Queries[Search, Packages, Symbols & Metrics]
-  Queries --> UI
-  Session --> Git[Read-Only Local Git]
-  Git --> Queries
-  Session --> Store[SQLite: Annotations & Cache]
-  Store --> Queries
+sequenceDiagram
+    participant UI as React
+    participant Host as Tauri host
+    participant Core as Rust core
+    UI->>Host: open_repository(analysisId)
+    Host->>Core: Scan authorized root or refresh its index
+    Core-->>Host: Inventory, graph, packages and diagnostics
+    Host-->>UI: Manifest with snapshotId and section counts
+    loop Each section until complete
+        UI->>Host: snapshot_batch(snapshotId, analysisId, section, cursor)
+        Host-->>UI: Items, next cursor and completion flag
+    end
+    UI->>UI: Validate endpoints and build the file tree
+    UI->>Host: finish_snapshot(snapshotId, analysisId)
+    Host-->>UI: Snapshot ready
 ```
 
-The filename exclusion policy runs before reading, parsing, or caching across general scanning, manifest/lockfile parsing, and Git inspection.
+The client checks each batch against its analysis ID, snapshot ID, cursor and expected count. The seven sections carry files, file nodes, file edges, warnings, package nodes, package edges and package diagnostics. Batches are bounded to 256 items and 256 KiB. A canceled or incomplete transfer cannot publish a partial graph. [IPC client](../src/services/analysisClient.js) · [Native transport](../src-tauri/src/transport.rs)
 
-## Contract Evolution
+## Code ownership
 
-### Legacy v1 (`AnalysisRequest` / `AnalysisResult`)
-
-`AnalysisRequest` accepts `RepositoryFile { path, name, size, content }`. The analyzer returns `AnalysisResult { schemaVersion, nodes, edges, stats, packages }` (with `packages` added cleanly as an additive field in F6). `--json` CLI mode continues supporting v1 stdin/stdout for compatibility.
-
-### Desktop Snapshot Envelope v2 (Implemented in F1)
-
-Desktop sessions separate transport envelope versioning, snapshot revisions, and extractor versions:
-
-| Entity | Core Fields | Rule |
+| Area | Responsibility | Entry point |
 | --- | --- | --- |
-| **Repository** | Persistent 128-bit ID, known canonical locations | Never identified solely by folder name or remote URL. |
-| **Worktree** | ID, `repositoryId`, authorized root | Git history may be shared across worktrees while annotations/layout stay scoped. |
-| **AnalysisSession** | Ephemeral ID, `worktreeId`, revision, active state | Only the active session authorizes file reads and IPC batches. |
-| **File** | ID (`path`), relative path, size, revision, `contentState` | No raw source text retained in snapshot. |
-| **Symbol** | Revision-scoped ID, path, kind, qualified name, byte range | Never used as permanent note anchors across edits. |
-| **Package** | ID, ecosystem, manifest, category, alias, declared/resolved versions | Separates declaration, lockfile resolution, and actual source imports. |
-| **Relation** | Source/target, category, kind, evidence, direction | Structural, historical, package, and visual edges remain cleanly separated. |
-| **Diagnostic** | Engine, version, messages, omitted count | Distinguishes skipped, denied, oversized, unresolved, errored, and canceled states. |
-| **Metric** | Version, universe, parameters, window/revision | Never mixes results across different snapshots or time windows. |
+| File inventory and revisions | Apply the file policy before reading, build compact indices and reuse eligible results on refresh. | [Repository scanner](../crates/beckarepo-core/src/repository.rs) |
+| Parsing and resolution | Extract syntax facts for JS/JSX, TS/TSX and Rust, resolve paths against the inventory and retain diagnostics and evidence. Dedicated resolvers handle web configuration, Cargo targets and Rust modules. | [Core modules](../crates/beckarepo-core/src/) |
+| Desktop commands | Authorize the selected folder, manage analysis lifetime and cancellation, and serve text, assets, search and symbols on demand. | [Tauri host](../src-tauri/src/main.rs) |
+| Analysis queries | Compute structural metrics on a directed projection. Query local Git history, churn and co-change using the selected worktree and history window. | [Structure](../src-tauri/src/structure.rs) · [Git](../src-tauri/src/git.rs) |
+| Rendering | Hydrate file metadata and path lookups, apply view filters, then draw the active projection. | [Main view](../src/RepoVisualizer.jsx) · [Dense canvas](../src/components/DenseGraphCanvas.jsx) |
+| User data | Persist worktree identities, notes, tags and preferences in the app data directory. Manage transactions, migrations, backups and the regenerable Git cache. | [SQLite storage](../src-tauri/src/storage.rs) |
 
-Entity IDs are namespaced by kind so package identifiers never collide with file paths, and mutable D3 layout objects never flow back into the Rust core.
+## Snapshot and content contracts
 
-## Memory & Streaming Pipeline
+The desktop and directory CLI use a **v2 snapshot envelope**. File records carry relative paths, revisions, sizes and content availability. The embedded analysis graph uses the **v1 result schema**. The CLI also accepts the standalone v1 JSON analysis request on stdin with `--json`. The directory CLI emits its snapshot on stdout; batched delivery belongs to the desktop IPC path. [CLI](../crates/beckarepo-core/src/bin/beckarepo-cli.rs) · [Graph validation](../src/core/contract.js)
 
-1. Inventory relative paths and revisions while applying exclusions and file-count limits.
-2. Read one bounded file at a time (`< 500 KiB`) to build compact identifier/module indices without retaining full source text.
-3. Resolve dependencies across the full inventory, streaming snapshot sections to the UI in `256-item / 256 KiB` batches (`snapshot_batch` → `finish_snapshot`).
-4. Fetch source text, media bytes, symbol extractions, and literal search hits lazily on demand under session and revision checks.
+Source text and media are fetched separately from the graph. On-demand requests identify the snapshot and file so the host can check scope and revision. Path exclusions, file-count and byte limits also apply during indexing. [File policy](POLITICA_DE_ARQUIVOS.md)
 
-## Storage Separation
+## What a graph represents
 
-| Table Group | Contents | Durability |
-| --- | --- | --- |
-| `schema_migrations` | Schema version and migration history | Essential |
-| `repositories` / `worktrees` / `locations` | Persistent identities and canonical root bindings | Essential |
-| `annotations` / `tags` / `annotation_tags` | User notes and tags scoped to `(worktree_id, path)` | User data (prioritized in backups) |
-| `preferences` | UI language, panel visibility, accent color, spacing | User data |
-| `git_repositories` / `git_worktrees` / `git_scopes` / `git_cache` | Git identity bindings and 7-day regenerable query cache | Cache (isolated from annotation deletion) |
+| Projection | Meaning of a connection |
+| --- | --- |
+| File dependency | A detected import, reference or other typed relation between files. Structural metrics use a subset of these types. |
+| Git co-change | Two files changed together in the selected history window. The evidence is their commit history. |
+| Package dependency | A declaration, locked dependency or observed source import. Consumer queries retain the relation type and manifest scope. |
+| Symbol calls | A call resolved within the selected file and revision. Dynamic calls can remain unresolved. |
+| Folder view | Files project onto visible directories. Edges between representatives sum underlying relations of the same type. |
 
-All writes use parameterized queries and short transactions. Consistent backups use SQLite's online backup API (`rusqlite::backup`).
+**Galaxy** places highly connected files nearer the center. **Atlas** allocates space by group size. **Free** sends force-layout work to a Web Worker and returns coordinates to the canvas. The viewport limits drawn lines and labels independently of the snapshot, so zoom and selection can reveal detail in a dense graph. **Classic** offers SVG on smaller graphs. [Layout calculations](../src/utils/galaxyLayout.js) · [Drawing budgets](../src/utils/graphViewport.js) · [Worker](../src/workers/denseLayoutRuntime.js)
 
-## Graph Projections
+## Persistence and appearance
 
-- **Structural:** resolved `import`, `require`, `re-export` (and optional `prototype-parent`) edges used for SCC cycles, degree, PageRank, and betweenness.
-- **Historical:** Git co-change and churn within an explicit commit/time window — never treated as import cycles or runtime call proof.
-- **External:** package declarations, lockfile dependencies, and `imports-package` consumer links.
-- **Visual:** spatial clusters and folder drill-down aggregations; aggregated visual edges never mutate the underlying model.
+Annotations belong to a worktree and relative path. Explicit reassociation handles a moved worktree. Language, panel visibility, accent and spacing are app preferences. The UI derives CSS and canvas colors from the same palette. The bundled SQLite backup facility covers the database, including preferences. Render coordinates and active viewport state live in the frontend. [Theme](../src/styles/theme.js) · [Illustrated manual](MANUAL.md)
+
+The roadmap describes the remaining coverage and measurement work. [Technical roadmap](ROADMAP.md)
